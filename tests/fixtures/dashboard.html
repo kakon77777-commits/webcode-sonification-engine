@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Ops Dashboard</title>
+<style>body{background:#111827;color:#e5e7eb;font-size:13px}.side{position:fixed}.pop{position:absolute}</style>
+</head>
+<body>
+  <div class="shell">
+    <div class="side">
+      <div><button>Overview</button></div><div><button>Alerts</button></div>
+      <div><button>Metrics</button></div><div><button>Logs</button></div>
+      <div><button>Traces</button></div><div><button>Deploys</button></div>
+    </div>
+    <div class="content">
+      <div class="row">
+        <div class="card"><div class="kpi"><div class="val">99.98%</div><div class="lbl">Uptime</div></div><button>Drill</button></div>
+        <div class="card"><div class="kpi"><div class="val">412ms</div><div class="lbl">P95</div></div><button>Drill</button></div>
+        <div class="card"><div class="kpi"><div class="val">17</div><div class="lbl">Alerts</div></div><button>Ack</button></div>
+        <div class="card"><div class="kpi"><div class="val">3.2k</div><div class="lbl">RPS</div></div><button>Scale</button></div>
+      </div>
+      <div class="row">
+        <div class="panel"><div class="chart"><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div><button>Export</button></div>
+        <div class="panel"><div class="chart"><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div><button>Export</button></div>
+      </div>
+      <div class="pop"><div class="inner"><div class="deep"><div class="deeper"><div class="deepest"><button>Confirm</button></div></div></div></div></div>
+    </div>
+  </div>
+  <script>/* inline telemetry stub */</script>
+  <script src="https://cdn.example/agent.js"></script>
+  <script src="https://cdn.example/charts.js"></script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Engine Reference</title>
+<style>body{background:#0b1120;color:#cbd5e1;font-size:14px}code{color:#7dd3fc}</style>
+</head>
+<body>
+  <header><h1>Engine Reference Manual</h1></header>
+  <nav>
+    <a href="#install">Install</a><a href="#config">Config</a><a href="#api">API</a>
+    <a href="#hooks">Hooks</a><a href="#cli">CLI</a><a href="#faq">FAQ</a><a href="#glossary">Glossary</a>
+  </nav>
+  <main>
+    <section id="install"><h2>Installation</h2>
+      <section><h3>Requirements</h3><p>The engine requires a runtime newer than the one you have and older than the one you want. Consult the compatibility table before attempting anything ambitious in production environments.</p></section>
+      <section><h3>Package</h3><p>Install from the registry with your package manager of choice. Lock the version. Future you will be grateful for the determinism, which is a theme around here.</p>
+        <section><h4>Verification</h4><p>Verify the checksum of the installed artifact against the published manifest. Reproducibility is not an accident; it is a habit maintained by tooling and mild paranoia.</p></section>
+      </section>
+    </section>
+    <section id="config"><h2>Configuration</h2>
+      <section><h3>Files</h3><p>Configuration is layered: defaults, project file, environment, flags. Each layer overrides the previous one, and each override is logged so the effective configuration can always be reconstructed from the audit trail.</p></section>
+      <section><h3>Schema</h3><p>Every option is validated against a schema. Unknown keys are errors, not warnings, because silent acceptance of typos is how outages are born. See <a href="#api">the API section</a> for programmatic access.</p>
+        <section><h4>Types</h4><p>Options are typed. Strings that look like numbers remain strings. This is documented here so that nobody files that bug again.</p></section>
+      </section>
+    </section>
+    <section id="api"><h2>API</h2>
+      <section><h3>Core</h3><p>The core interface exposes analyze, transform and render. Each function is pure with respect to its inputs, and each is documented with examples that actually run in continuous integration.</p></section>
+      <section><h3>Advanced</h3><p>Streaming, batching, cancellation and structured errors. Read <a href="#hooks">hooks</a> before subclassing anything; composition is nearly always the better answer to the question you are about to ask.</p></section>
+    </section>
+    <section id="hooks"><h2>Hooks</h2><p>Lifecycle hooks fire before and after every stage. Hooks receive immutable snapshots; mutation is reserved for the transform stage, where it is at least honest about itself.</p></section>
+    <section id="cli"><h2>CLI</h2><p>Every API capability has a command-line equivalent, and every command supports machine-readable output for the agents and scripts that increasingly outnumber the humans.</p></section>
+    <section id="faq"><h2>FAQ</h2><p>Most questions are about determinism, caching and why the defaults are the defaults. The answers are: yes, carefully, and history.</p></section>
+    <section id="glossary"><h2>Glossary</h2><p>Terms used throughout this manual, defined once, linked everywhere, in the spirit of a codebase that dreams of being a reference manual when it grows up.</p></section>
+  </main>
+  <footer><p>Reference v3 — <a href="/license">license</a> · <a href="/changelog">changelog</a></p></footer>
+</body>
+</html>

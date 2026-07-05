@@ -1,0 +1,15 @@
+WebCode Sonification Engine
+Copyright 2026 Neo.K (EveMissLab)
+
+This product includes software developed as part of the
+WebCode Sonification Engine project (https://github.com/kakon77777-commits).
+
+Licensed under the Apache License, Version 2.0.
+
+Prior art acknowledgment: "Synesthesia Add-on: a Tool for HTML Sonification"
+(Brazilian Symposium on Computer Music, 2017) previously proposed treating
+HTML pages as musical scores in a browser add-on
+(https://github.com/rppbodo/synesthesia-addon). This project does not claim
+to be the first HTML-to-music browser extension, and thanks that author:
+WSE was designed independently, but the existence of this pioneer work
+established the feasibility of the direction.

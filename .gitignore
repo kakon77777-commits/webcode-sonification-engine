@@ -1,0 +1,6 @@
+node_modules/
+dist/
+demo/demo.js
+scripts/.compare.mjs
+.claude/
+*.log

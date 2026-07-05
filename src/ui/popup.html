@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>WebCode Sonification Engine</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <h1>WebCode Sonification</h1>
+      <span class="badge" title="All analysis runs locally. Nothing is uploaded.">local-only</span>
+    </header>
+
+    <main>
+      <button id="analyze" class="primary">▶ Analyze &amp; Play</button>
+
+      <div class="row">
+        <label for="mode">Mode</label>
+        <select id="mode">
+          <option value="hybrid" selected>Hybrid</option>
+          <option value="musical">Musical</option>
+          <option value="analytical">Analytical</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="style">Style</label>
+        <select id="style">
+          <option value="ambient" selected>Ambient</option>
+          <option value="piano">Piano</option>
+          <option value="electronic">Electronic</option>
+          <option value="orchestral">Orchestral</option>
+          <option value="eastern">Eastern 東方</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>Seed</label>
+        <span class="value">Structural</span>
+      </div>
+
+      <details id="tune-box" open>
+        <summary>Customize</summary>
+        <div class="sliders">
+          <div class="slider-row">
+            <label for="s-tempo">Tempo</label>
+            <input type="range" id="s-tempo" min="-30" max="30" step="1" value="0" />
+            <span class="value" id="v-tempo">+0</span>
+          </div>
+          <div class="slider-row">
+            <label for="s-density">Density</label>
+            <input type="range" id="s-density" min="50" max="150" step="5" value="100" />
+            <span class="value" id="v-density">100%</span>
+          </div>
+          <div class="slider-row">
+            <label for="s-bright">Brightness</label>
+            <input type="range" id="s-bright" min="0" max="100" step="5" value="50" />
+            <span class="value" id="v-bright">50</span>
+          </div>
+          <div class="slider-row">
+            <label for="s-reverb">Reverb</label>
+            <input type="range" id="s-reverb" min="0" max="100" step="5" value="50" />
+            <span class="value" id="v-reverb">50</span>
+          </div>
+          <button id="tune-reset" class="linkish">Reset to defaults</button>
+        </div>
+      </details>
+
+      <div id="info" class="info hidden">
+        <div class="row"><label>Tempo</label><span class="value" id="i-bpm">–</span></div>
+        <div class="row"><label>Key</label><span class="value" id="i-key">–</span></div>
+        <div class="row"><label>Nodes</label><span class="value" id="i-nodes">–</span></div>
+        <div class="row"><label>Length</label><span class="value" id="i-length">–</span></div>
+        <div class="row"><label>Fingerprint</label><span class="value mono" id="i-hash">–</span></div>
+      </div>
+
+      <div class="controls">
+        <button id="stop" disabled>■ Stop</button>
+        <button id="regen" disabled>↻ Regenerate</button>
+      </div>
+
+      <details id="explain-box" class="hidden">
+        <summary>Why does this page sound like this?</summary>
+        <ul id="explain"></ul>
+      </details>
+
+      <div id="error" class="error hidden"></div>
+      <div id="status" class="status"></div>
+    </main>
+
+    <footer>
+      <div class="foot-row">
+        <span>v0.2.0 · Apache-2.0</span>
+        <span>The web was never silent.</span>
+      </div>
+      <div class="credits">
+        🙏 With gratitude to the pioneer:
+        <a href="https://github.com/rppbodo/synesthesia-addon" target="_blank" rel="noopener">Synesthesia Add-on</a>
+        (HTML Sonification, 2017)
+      </div>
+    </footer>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

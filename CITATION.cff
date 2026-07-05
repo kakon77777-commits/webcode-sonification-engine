@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use this software or its concepts in research, please cite it as below."
+title: "WebCode Sonification Engine"
+abstract: "An open-source experimental browser extension for transforming webpage computational structure into deterministic and generative music. A webpage's accessible computational structure may define a reproducible generative musical identity."
+type: software
+version: 0.2.0
+date-released: 2026-07-05
+license: Apache-2.0
+repository-code: "https://github.com/kakon77777-commits/webcode-sonification-engine"
+url: "https://wse.evemisstechnology.com/"
+authors:
+  - name: "Neo.K (EveMissLab)"
+    email: "kakon77777@gmail.com"
+keywords:
+  - sonification
+  - generative music
+  - browser extension
+  - web audio
+  - HTML sonification
+  - deterministic music generation
+references:
+  - type: article
+    title: "Synesthesia Add-on: a Tool for HTML Sonification"
+    conference:
+      name: "Brazilian Symposium on Computer Music"
+    year: 2017
+    repository-code: "https://github.com/rppbodo/synesthesia-addon"
+    notes: "Prior art, gratefully acknowledged: HTML pages treated as musical scores in a browser add-on. WSE was designed independently but thanks this pioneer work for establishing feasibility."

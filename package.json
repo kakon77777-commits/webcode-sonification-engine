@@ -1,0 +1,24 @@
+{
+  "name": "webcode-sonification-engine",
+  "version": "0.2.0",
+  "description": "An open-source experimental browser extension for transforming webpage computational structure into deterministic and generative music.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/make-icons.mjs && node scripts/build.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "compare": "esbuild scripts/compare-fixtures.ts --bundle --platform=node --format=esm --external:jsdom --outfile=scripts/.compare.mjs --log-level=error && node scripts/.compare.mjs"
+  },
+  "author": "Neo.K (EveMissLab)",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@types/chrome": "^0.0.280",
+    "@types/jsdom": "^28.0.3",
+    "@types/node": "^26.1.0",
+    "esbuild": "^0.25.0",
+    "jsdom": "^26.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
