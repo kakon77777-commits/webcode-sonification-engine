@@ -24,7 +24,7 @@
 | Summary | 自動帶入 manifest description；可改成 listing-en.md 的 Summary |
 | Description | 貼 `listing-en.md` 的 Detailed description 全文 |
 | Category | **Fun** |
-| Store icon | 自動帶入 manifest 的 128px icon |
+| Store icon (128×128) | 上傳 `assets/store-icon-128.png`（符合指南：圖案 96×96 + 四周 16px 透明邊距） |
 | Screenshots | 依序上傳 `assets/screenshot-1-visualizer-1280x800.png`、`assets/screenshot-2-popup-1280x800.png` |
 | Small promo tile (440×280) | `assets/promo-tile-440x280.png` |
 | Marquee (1400×560) | `assets/marquee-1400x560.png`（選填，有就放） |

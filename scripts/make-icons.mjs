@@ -54,7 +54,7 @@ function lerp(a, b, t) {
   return a + (b - a) * t;
 }
 
-function drawIcon(size) {
+function drawIconPixels(size) {
   const px = Buffer.alloc(size * size * 4);
   const set = (x, y, r, g, b, a = 255) => {
     if (x < 0 || y < 0 || x >= size || y >= size) return;
@@ -103,10 +103,30 @@ function drawIcon(size) {
     }
   });
 
-  return encodePng(size, size, px);
+  return px;
+}
+
+function drawIcon(size) {
+  return encodePng(size, size, drawIconPixels(size));
 }
 
 for (const size of [16, 48, 128]) {
   writeFileSync(join(outDir, `icon${size}.png`), drawIcon(size));
 }
-console.log("icons written to", outDir);
+
+// Chrome Web Store icon: per Google's image guidelines the 128×128 store icon
+// must keep the actual artwork at 96×96 with 16 px of transparent padding on
+// every side. Same art, padded canvas.
+const storeDir = join(root, "store", "assets");
+mkdirSync(storeDir, { recursive: true });
+const ART = 96;
+const PAD = 16;
+const FULL = 128;
+const art = drawIconPixels(ART);
+const padded = Buffer.alloc(FULL * FULL * 4); // starts fully transparent
+for (let y = 0; y < ART; y++) {
+  art.copy(padded, ((y + PAD) * FULL + PAD) * 4, y * ART * 4, (y + 1) * ART * 4);
+}
+writeFileSync(join(storeDir, "store-icon-128.png"), encodePng(FULL, FULL, padded));
+
+console.log("icons written to", outDir, "+ store icon to", storeDir);
