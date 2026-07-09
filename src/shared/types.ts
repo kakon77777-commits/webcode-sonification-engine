@@ -55,6 +55,15 @@ export interface ScriptFeatures {
   scriptSrcDomainCount: number;
 }
 
+/**
+ * One sampled element for the visualizer's code stream: tag name + depth only.
+ * Never attributes, values or text — same privacy class as the tag histogram.
+ */
+export interface ElementToken {
+  tag: string;
+  depth: number;
+}
+
 export interface PageFeatures {
   version: 1;
   /** Canonical URL: origin + pathname only. Query and hash are stripped for privacy. */
@@ -63,6 +72,11 @@ export interface PageFeatures {
   style: StyleFeatures;
   geometry: GeometryFeatures;
   script: ScriptFeatures;
+  /**
+   * Document-order element sample for visualization (≤ 360 entries).
+   * NOT part of the fingerprint — hashes are unchanged from v0.2.
+   */
+  tokens: ElementToken[];
 }
 
 export interface PageFingerprint {
@@ -157,6 +171,9 @@ export interface MusicProfile {
   explain: ExplainItem[];
 }
 
+/** Which structural mapping layer produced a note — the visualizer's provenance. */
+export type NoteLayer = "pad" | "bass" | "melody" | "arp" | "bell" | "perc";
+
 export interface NoteEvent {
   /** Seconds from score start. */
   time: number;
@@ -169,6 +186,8 @@ export interface NoteEvent {
   instrument: InstrumentName;
   /** [-1, 1] */
   pan: number;
+  /** Provenance: the structural layer that generated this note. */
+  layer: NoteLayer;
 }
 
 export interface Score {
@@ -188,4 +207,12 @@ export interface GenerateOptions {
   tuning?: TuningOptions;
 }
 
-export const WSE_VERSION = "0.2.0";
+/** Everything the visualizer page needs, handed over via chrome.storage.local. */
+export interface VizPayload {
+  score: Score;
+  tokens: ElementToken[];
+  url: string;
+  tuning: TuningOptions;
+}
+
+export const WSE_VERSION = "0.3.0";

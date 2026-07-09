@@ -284,6 +284,7 @@ export function generateScore(
           velocity: (0.22 + 0.18 * norm.lightness) * sGain,
           instrument: cfg.pad,
           pan: padSpread[v],
+          layer: "pad",
         });
       }
 
@@ -295,6 +296,7 @@ export function generateScore(
         velocity: (0.5 + 0.2 * norm.complexity) * sGain,
         instrument: cfg.bass,
         pan: 0,
+        layer: "bass",
       });
       if (rng() < (0.25 + 0.4 * percBoost) * dens && !isOutro) {
         events.push({
@@ -304,6 +306,7 @@ export function generateScore(
           velocity: (0.4 + 0.15 * norm.complexity) * sGain,
           instrument: cfg.bass,
           pan: 0,
+          layer: "bass",
         });
       }
 
@@ -335,6 +338,7 @@ export function generateScore(
             velocity: clamp((baseVel + accent) * sGain, 0.05, 1),
             instrument: melodyInstr,
             pan: clamp(lean * 0.2, -0.4, 0.4),
+            layer: "melody",
           });
           // Grace-note ornament for breathy winds (蕭/笛): one sixteenth before,
           // one scale degree above, quiet — a signature of the eastern voices.
@@ -347,6 +351,7 @@ export function generateScore(
                 velocity: clamp((baseVel - 0.2) * sGain, 0.05, 1),
                 instrument: melodyInstr,
                 pan: clamp(lean * 0.2, -0.4, 0.4),
+                layer: "melody",
               });
             }
           }
@@ -358,6 +363,7 @@ export function generateScore(
               velocity: clamp((baseVel - 0.15) * sGain, 0.05, 1),
               instrument: melodyInstr,
               pan: clamp(lean * 0.2 + 0.2, -0.6, 0.6),
+              layer: "melody",
             });
           }
         }
@@ -372,6 +378,7 @@ export function generateScore(
           velocity: 0.5 * sGain,
           instrument: melodyInstr,
           pan: 0,
+          layer: "melody",
         });
       }
 
@@ -394,6 +401,7 @@ export function generateScore(
             velocity: clamp((0.28 + 0.2 * arpGate) * sGain, 0.05, 1),
             instrument: arpInstr,
             pan: clamp(lean * 0.6 + (s % 2 === 0 ? -0.15 : 0.15), -1, 1),
+            layer: "arp",
           });
         }
       }
@@ -408,6 +416,7 @@ export function generateScore(
           velocity: 0.32 * sGain,
           instrument: bellInstr,
           pan: clamp((rng() * 2 - 1) * 0.7, -1, 1),
+          layer: "bell",
         });
       }
 
@@ -425,6 +434,7 @@ export function generateScore(
               velocity: 0.7 * sGain,
               instrument: "kick",
               pan: 0,
+              layer: "perc",
             });
           }
           if (hatPattern[s]) {
@@ -435,6 +445,7 @@ export function generateScore(
               velocity: (onBeat ? 0.3 : 0.2) * sGain,
               instrument: "hihat",
               pan: 0.25,
+              layer: "perc",
             });
           }
         }
@@ -449,6 +460,7 @@ export function generateScore(
             velocity: 0.3 * sGain,
             instrument: "perc",
             pan: -0.2,
+            layer: "perc",
           });
         }
       } else if (cfg.perc === "cinematic" && b === 0 && !isIntro) {
@@ -459,6 +471,7 @@ export function generateScore(
           velocity: 0.65 * sGain,
           instrument: "taiko",
           pan: 0,
+          layer: "perc",
         });
         if (rng() < (0.3 + 0.5 * percBoost) * dens) {
           events.push({
@@ -468,6 +481,7 @@ export function generateScore(
             velocity: 0.35 * sGain,
             instrument: "perc",
             pan: 0.3,
+            layer: "perc",
           });
         }
       } else if (cfg.perc === "eastern" && isBody) {
@@ -481,6 +495,7 @@ export function generateScore(
             velocity: (s === 0 ? 0.6 : 0.4) * sGain,
             instrument: "taiko",
             pan: s % 2 === 0 ? -0.15 : 0.15,
+            layer: "perc",
           });
         }
       }

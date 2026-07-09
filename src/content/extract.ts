@@ -1,5 +1,5 @@
-import type { PageFeatures, ScriptFeatures } from "../shared/types.js";
-import { computeDomFeatures, traverseDom } from "./dom-features.js";
+import type { ElementToken, PageFeatures, ScriptFeatures } from "../shared/types.js";
+import { computeDomFeatures, traverseDom, type Traversal } from "./dom-features.js";
 import { extractStyleFeatures } from "./style-features.js";
 import { extractGeometryFeatures } from "./geometry-features.js";
 
@@ -9,6 +9,22 @@ import { extractGeometryFeatures } from "./geometry-features.js";
  */
 
 const MAX_SCRIPTS = 300;
+export const MAX_TOKENS = 360;
+
+/**
+ * Document-order element sample for the visualizer's code stream (v0.3).
+ * Tag + depth only — the same privacy class as the tag histogram — and
+ * deliberately NOT part of the fingerprint, so v0.2 hashes are unchanged.
+ */
+export function extractTokens(traversal: Traversal, cap = MAX_TOKENS): ElementToken[] {
+  const els = traversal.elements;
+  const stride = Math.max(1, Math.ceil(els.length / cap));
+  const tokens: ElementToken[] = [];
+  for (let i = 0; i < els.length && tokens.length < cap; i += stride) {
+    tokens.push({ tag: els[i].el.tagName.toLowerCase(), depth: Math.min(32, els[i].depth) });
+  }
+  return tokens;
+}
 
 export function extractScriptFeatures(doc: Document): ScriptFeatures {
   const scripts = doc.scripts;
@@ -56,5 +72,6 @@ export function extractPageFeatures(doc: Document, win: Window & typeof globalTh
     style: extractStyleFeatures(traversal.elements, win),
     geometry: extractGeometryFeatures(traversal.elements, win),
     script: extractScriptFeatures(doc),
+    tokens: extractTokens(traversal),
   };
 }

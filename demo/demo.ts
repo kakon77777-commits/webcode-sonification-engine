@@ -3,6 +3,7 @@ import { extractPageFeatures } from "../src/content/extract.js";
 import { computeFingerprint } from "../src/mapping/fingerprint.js";
 import { generateScore } from "../src/mapping/default-map.js";
 import { WseAudioEngine } from "../src/audio/engine.js";
+import { LAYER_COLORS, LAYER_LABELS, mountViz, type VizHandles } from "../src/viz/viz-core.js";
 
 /**
  * Standalone demo: the full extension pipeline running inside a normal page.
@@ -50,6 +51,21 @@ function analyze() {
   return { features, fingerprint, score };
 }
 
+let viz: VizHandles | null = null;
+
+function renderVizLegend(): void {
+  const legend = $("viz-legend");
+  if (legend.childElementCount > 0) return;
+  for (const layer of Object.keys(LAYER_LABELS) as (keyof typeof LAYER_LABELS)[]) {
+    const key = document.createElement("span");
+    const dot = document.createElement("span");
+    dot.className = "dot";
+    dot.style.background = LAYER_COLORS[layer];
+    key.append(dot, LAYER_LABELS[layer]);
+    legend.appendChild(key);
+  }
+}
+
 async function play() {
   const { features, fingerprint, score } = analyze();
   (window as any).__wse = {
@@ -67,6 +83,22 @@ async function play() {
       out.textContent = "finished";
     },
   });
+
+  // Watch the code become music: same viz core as the extension's visualizer tab.
+  $("viz").classList.add("on");
+  renderVizLegend();
+  viz?.stop();
+  viz = mountViz({
+    tokensEl: $("tokens"),
+    canvas: $("roll") as HTMLCanvasElement,
+    score,
+    tokens: features.tokens,
+    getPosition: () => engine.getState().position,
+    isPlaying: () => engine.getState().playing,
+  });
+  (window as any).__wseViz = viz;
+  viz.start();
+
   out.textContent =
     `${score.profile.keyName} · ${score.profile.bpm} BPM · ${score.profile.lengthSec}s · ` +
     `${score.events.length} notes · ${score.profile.character}-led · #${fingerprint.hash}` +
@@ -83,6 +115,7 @@ $("regen").addEventListener("click", () => {
 });
 $("stop").addEventListener("click", () => {
   void engine.stop();
+  viz?.stop();
   out.textContent = "stopped";
 });
 

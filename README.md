@@ -7,7 +7,7 @@
 
 網頁代碼音樂化引擎——讀取目前網頁的 DOM、HTML、CSS 與可存取結構特徵，透過可重現的生成規則把它轉成音樂。
 
-- **Status:** v0.2.0 developer preview (Chrome, Manifest V3)
+- **Status:** v0.3.0 developer preview (Chrome, Manifest V3)
 - **Website:** https://wse.evemisstechnology.com/ (live in-browser demo included)
 - **Repository:** https://github.com/kakon77777-commits/webcode-sonification-engine
 - **License:** Apache-2.0
@@ -97,6 +97,15 @@ node scripts/serve.mjs
 - Only aggregate text statistics (length, word count) are used — never the text itself.
 - No remote code, no page-script execution.
 
+## Visualizer — watch the code become music
+
+**Analyze & Visualize** (v0.3) opens a full-tab visualizer that shows the sonification *as it happens*:
+
+- the page's element tokens (`<div>` `<a>` `<img>` …, tag + depth only) stream by like subtitles, and the token that structurally drove each note **lights up the instant it sounds** — links flash when the arpeggio plucks, images flash on bells, buttons flash on percussion;
+- below, a **piano-roll score scrolls under a fixed playhead**, colored by mapping layer, with onset flashes on every note.
+
+This is honest provenance, not decoration: every `NoteEvent` carries the mapping layer that generated it, and each layer highlights exactly the tag family that feeds it (Rules 3–5). The same visualizer runs in the live demo on the website.
+
 ## Explain Mode
 
 The popup answers *“Why does this page sound like this?”* — e.g. *“high link density → busy arpeggios”, “dark palette → minor scale”*. Structure in, explanation out.
@@ -147,13 +156,14 @@ WSE deliberately claims a narrower, different thing:
 
 ## Changelog
 
+- **v0.3.0** — Visualizer: full-tab "watch the code become music" view (token stream + karaoke-style highlights + scrolling piano roll), note provenance layers, `data-wse-ignore` extraction opt-out, 41 tests
 - **v0.2.0** — cross-site differentiation overhaul: structure-driven orchestration (§17 "Orchestra by Web Architecture"), 7 scales, tag-entropy tempo spread, Euclidean rhythm signatures; new instruments 蕭/笛/guitar/太鼓; Eastern style; customize sliders (tempo/density/brightness/reverb); product site at wse.evemisstechnology.com
 - **v0.1.0** — MVP per the technical whitepaper: MV3 extension, deterministic pipeline, 4 styles, offscreen Web Audio, 28 tests
 
 ## Roadmap
 
-- **v0.3** — Scroll Mode (viewport as playhead), Mutation Mode (live DOM performance), WAV export
-- **v0.4** — custom mapping profiles, MIDI export, advanced instruments
+- **v0.4** — Scroll Mode (viewport as playhead), Mutation Mode (live DOM performance), WAV export
+- **v0.5** — custom mapping profiles, MIDI export, advanced instruments
 - **v1.0** — Firefox, public mapping SDK, research dataset
 
 ## Authorship

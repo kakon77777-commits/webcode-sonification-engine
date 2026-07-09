@@ -1,6 +1,6 @@
 {
   "name": "webcode-sonification-engine",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "An open-source experimental browser extension for transforming webpage computational structure into deterministic and generative music.",
   "private": true,
   "type": "module",

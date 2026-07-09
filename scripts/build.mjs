@@ -26,6 +26,7 @@ await build({
     "content-extractor": join(root, "src/content/extractor.ts"),
     popup: join(root, "src/ui/popup.ts"),
     offscreen: join(root, "src/offscreen/offscreen.ts"),
+    visualizer: join(root, "src/viz/visualizer.ts"),
   },
   outdir: dist,
 });
@@ -42,6 +43,8 @@ cpSync(join(root, "manifest.json"), join(dist, "manifest.json"));
 cpSync(join(root, "src/ui/popup.html"), join(dist, "popup.html"));
 cpSync(join(root, "src/ui/popup.css"), join(dist, "popup.css"));
 cpSync(join(root, "src/offscreen/offscreen.html"), join(dist, "offscreen.html"));
+cpSync(join(root, "src/viz/visualizer.html"), join(dist, "visualizer.html"));
+cpSync(join(root, "src/viz/visualizer.css"), join(dist, "visualizer.css"));
 cpSync(join(root, "icons"), join(dist, "icons"), { recursive: true });
 
 console.log("extension built into dist/");

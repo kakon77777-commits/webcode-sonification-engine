@@ -93,5 +93,21 @@ export function syntheticFeatures(overrides: Partial<{
       moduleScriptCount: 2,
       scriptSrcDomainCount: 3,
     },
+    tokens: [
+      { tag: "html", depth: 0 },
+      { tag: "body", depth: 1 },
+      { tag: "header", depth: 2 },
+      { tag: "nav", depth: 3 },
+      { tag: "a", depth: 4 },
+      { tag: "a", depth: 4 },
+      { tag: "main", depth: 2 },
+      { tag: "section", depth: 3 },
+      { tag: "h2", depth: 4 },
+      { tag: "p", depth: 4 },
+      { tag: "img", depth: 4 },
+      { tag: "button", depth: 4 },
+      { tag: "div", depth: 3 },
+      { tag: "footer", depth: 2 },
+    ],
   };
 }

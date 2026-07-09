@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>WSE Visualizer — code becoming music</title>
+    <link rel="stylesheet" href="visualizer.css" />
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <span class="bars"><i></i><i></i><i></i><i></i><i></i></span>
+        <h1>WebCode Sonification — Visualizer</h1>
+      </div>
+      <div class="meta" id="meta">loading…</div>
+      <div class="buttons">
+        <button id="replay">↻ Replay</button>
+        <button id="stopBtn">■ Stop</button>
+      </div>
+    </header>
+
+    <div class="legend" id="legend"></div>
+
+    <main>
+      <section class="stream-wrap">
+        <h2>Page structure · 被點到的程式碼正在發聲</h2>
+        <div id="tokens" class="tokens"></div>
+      </section>
+      <section class="roll-wrap">
+        <h2>Score · 持續前進的樂譜</h2>
+        <canvas id="roll"></canvas>
+      </section>
+    </main>
+
+    <div id="overlay" class="overlay hidden">
+      <button id="overlay-start" class="big">▶ Start</button>
+    </div>
+    <div id="empty" class="overlay hidden">
+      <p>No score to visualize.<br />Open the WSE popup on a page and press <b>Analyze &amp; Visualize</b>.</p>
+    </div>
+
+    <footer>
+      <span>Local-only · nothing leaves your browser</span>
+      <span>🙏 <a href="https://github.com/rppbodo/synesthesia-addon" target="_blank" rel="noopener">Synesthesia Add-on</a> (2017) · The web was never silent.</span>
+    </footer>
+
+    <script src="visualizer.js"></script>
+  </body>
+</html>

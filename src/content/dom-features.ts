@@ -26,6 +26,13 @@ function isEditable(el: Element): boolean {
   return attr !== null && attr.toLowerCase() !== "false";
 }
 
+/**
+ * Subtrees marked data-wse-ignore are invisible to extraction — used by WSE's
+ * own injected UI (e.g. the demo's visualizer panel) so the tool never
+ * sonifies itself, and available to site authors as an opt-out.
+ */
+export const IGNORE_ATTR = "data-wse-ignore";
+
 /** Single capped depth-first walk shared by all extractors. */
 export function traverseDom(doc: Document): Traversal {
   const root = doc.documentElement;
@@ -36,6 +43,7 @@ export function traverseDom(doc: Document): Traversal {
   const stack: TraversedElement[] = [{ el: root, depth: 0 }];
   while (stack.length > 0) {
     const item = stack.pop()!;
+    if (item.el.hasAttribute(IGNORE_ATTR)) continue;
     elements.push(item);
     if (elements.length >= MAX_DOM_NODES) {
       truncated = stack.length > 0;
@@ -111,6 +119,7 @@ export function computeDomFeatures(doc: Document, traversal: Traversal): DomFeat
       // <div contenteditable><p>…</p></div> is user data too (§26).
       const editableHost = parent.closest("[contenteditable]");
       if (editableHost && isEditable(editableHost)) continue;
+      if (parent.closest(`[${IGNORE_ATTR}]`)) continue;
       const text = node.nodeValue ?? "";
       const trimmed = text.trim();
       if (trimmed.length === 0) continue;

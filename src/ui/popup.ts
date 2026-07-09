@@ -13,6 +13,7 @@ import { generateScore } from "../mapping/default-map.js";
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 const analyzeBtn = $<HTMLButtonElement>("analyze");
+const visualizeBtn = $<HTMLButtonElement>("visualize");
 const stopBtn = $<HTMLButtonElement>("stop");
 const regenBtn = $<HTMLButtonElement>("regen");
 const modeSel = $<HTMLSelectElement>("mode");
@@ -176,6 +177,37 @@ async function analyzeAndPlay(): Promise<void> {
   }
 }
 
+/** Analyze, then watch the code become music in a full visualizer tab. */
+async function analyzeAndVisualize(): Promise<void> {
+  clearError();
+  visualizeBtn.disabled = true;
+  setStatus("Analyzing page…");
+  try {
+    variation = 0;
+    const features = await extractFromActiveTab();
+    lastFeatures = features;
+    const score = buildScore(features);
+    // One audio source at a time: the visualizer tab plays, offscreen stops.
+    await chrome.runtime.sendMessage({ type: "WSE_STOP" });
+    await chrome.storage.local.set({
+      wseVizPayload: {
+        score,
+        tokens: features.tokens,
+        url: features.url,
+        tuning: currentTuning(),
+      },
+    });
+    await chrome.tabs.create({ url: chrome.runtime.getURL("visualizer.html") });
+    window.close();
+  } catch (err) {
+    const code = (err as { wseCode?: WseErrorCode }).wseCode ?? "NO_DOM";
+    showError(code);
+    setStatus("");
+  } finally {
+    visualizeBtn.disabled = false;
+  }
+}
+
 async function stop(): Promise<void> {
   await chrome.runtime.sendMessage({ type: "WSE_STOP" });
   stopBtn.disabled = true;
@@ -234,6 +266,7 @@ async function init(): Promise<void> {
 }
 
 analyzeBtn.addEventListener("click", () => void analyzeAndPlay());
+visualizeBtn.addEventListener("click", () => void analyzeAndVisualize());
 stopBtn.addEventListener("click", () => void stop());
 regenBtn.addEventListener("click", () => void regenerate());
 styleSel.addEventListener("change", () => void saveSettings());
