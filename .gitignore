@@ -3,4 +3,5 @@ dist/
 demo/demo.js
 scripts/.compare.mjs
 .claude/
+store/*.zip
 *.log
