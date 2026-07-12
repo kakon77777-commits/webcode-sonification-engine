@@ -75,6 +75,16 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return undefined;
   }
 
+  if (msg.type === "WSE_MUTATION_BATCH") {
+    // Fire-and-forget relay from the content script's mutation-tracker.
+    void chrome.runtime
+      .sendMessage({ type: "WSE_OFFSCREEN_MUTATION_BATCH", target: "wse-offscreen", batch: msg.batch })
+      .catch(() => {
+        // No offscreen document (nothing playing) — nothing to do.
+      });
+    return undefined;
+  }
+
   if (msg.type === "WSE_STOP") {
     (async () => {
       if (await hasOffscreen()) {

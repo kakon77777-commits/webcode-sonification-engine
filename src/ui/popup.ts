@@ -147,6 +147,22 @@ function buildScore(features: PageFeatures): Score {
   });
 }
 
+const TRACKER_FILE: Partial<Record<DriveMode, string>> = {
+  scroll: "scroll-tracker.js",
+  live: "mutation-tracker.js",
+};
+const STATUS_PREFIX: Record<DriveMode, string> = {
+  auto: "Playing",
+  scroll: "Scroll to play",
+  live: "Live — watching the page",
+};
+
+/** Detach any content-script tracker that might be listening on `tabId` (idempotent, safe if none is). */
+function detachTrackers(tabId: number): void {
+  chrome.tabs.sendMessage(tabId, { type: "WSE_SCROLL_STOP" }).catch(() => {});
+  chrome.tabs.sendMessage(tabId, { type: "WSE_MUTATION_STOP" }).catch(() => {});
+}
+
 async function playScore(score: Score): Promise<void> {
   const driveMode = playbackSel.value as DriveMode;
   const res = (await chrome.runtime.sendMessage({
@@ -160,16 +176,15 @@ async function playScore(score: Score): Promise<void> {
     return;
   }
   stopBtn.disabled = false;
-  if (driveMode === "scroll" && lastTabId !== null) {
+  const trackerFile = TRACKER_FILE[driveMode];
+  if (trackerFile && lastTabId !== null) {
     try {
-      await chrome.scripting.executeScript({ target: { tabId: lastTabId }, files: ["scroll-tracker.js"] });
+      await chrome.scripting.executeScript({ target: { tabId: lastTabId }, files: [trackerFile] });
     } catch {
-      // Page doesn't allow injection (e.g. a chrome:// tab) — Scroll Mode just won't advance.
+      // Page doesn't allow injection (e.g. a chrome:// tab) — this mode just won't advance.
     }
-    setStatus(`Scroll to play · ${score.profile.style} · ${score.profile.keyName} · ${score.profile.bpm} BPM`);
-  } else {
-    setStatus(`Playing · ${score.profile.style} · ${score.profile.keyName} · ${score.profile.bpm} BPM`);
   }
+  setStatus(`${STATUS_PREFIX[driveMode]} · ${score.profile.style} · ${score.profile.keyName} · ${score.profile.bpm} BPM`);
 }
 
 async function analyzeAndPlay(): Promise<void> {
@@ -209,11 +224,7 @@ async function analyzeAndVisualize(): Promise<void> {
     lastScore = score;
     // One audio source at a time: the visualizer tab plays, offscreen stops.
     await chrome.runtime.sendMessage({ type: "WSE_STOP" });
-    if (lastTabId !== null) {
-      chrome.tabs.sendMessage(lastTabId, { type: "WSE_SCROLL_STOP" }).catch(() => {
-        // No scroll-tracker listening on this tab — nothing to detach.
-      });
-    }
+    if (lastTabId !== null) detachTrackers(lastTabId);
     await chrome.storage.local.set({
       wseVizPayload: {
         score,
@@ -235,11 +246,7 @@ async function analyzeAndVisualize(): Promise<void> {
 
 async function stop(): Promise<void> {
   await chrome.runtime.sendMessage({ type: "WSE_STOP" });
-  if (lastTabId !== null) {
-    chrome.tabs.sendMessage(lastTabId, { type: "WSE_SCROLL_STOP" }).catch(() => {
-      // No scroll-tracker listening on this tab — nothing to detach.
-    });
-  }
+  if (lastTabId !== null) detachTrackers(lastTabId);
   stopBtn.disabled = true;
   setStatus("Stopped.");
 }

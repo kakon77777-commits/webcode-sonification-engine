@@ -1,5 +1,6 @@
 import type { ElementToken, NoteEvent, NoteLayer, Score } from "../shared/types.js";
 import { lowerBound } from "../audio/scroll-scheduler.js";
+import { LAYER_TAGS } from "../mapping/layer-tags.js";
 
 /**
  * Visualizer core (v0.3): shows the process of code becoming music.
@@ -31,16 +32,6 @@ export const LAYER_LABELS: Record<NoteLayer, string> = {
   arp: "links → arpeggio",
   bell: "images → bells",
   perc: "buttons → percussion",
-};
-
-/** Which tag families feed which mapping layer (mirrors Rules 3–5, §16). */
-const LAYER_TAGS: Record<NoteLayer, string[]> = {
-  arp: ["a"],
-  bell: ["img", "picture", "source", "svg", "figure", "video"],
-  perc: ["button", "input", "select", "form", "label", "textarea"],
-  melody: ["h1", "h2", "h3", "h4", "h5", "h6", "p", "li", "span", "strong", "em", "blockquote", "pre", "code", "td", "th"],
-  pad: ["div", "section", "article", "header", "nav", "aside", "figure"],
-  bass: ["html", "body", "main", "footer", "table", "ul", "ol"],
 };
 
 /**

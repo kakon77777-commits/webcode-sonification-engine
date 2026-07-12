@@ -1,4 +1,5 @@
 import type { PageFeatures, Score, TuningOptions } from "./types.js";
+import type { MutationBatch } from "../mapping/live.js";
 
 /** Error codes surfaced in the popup (§79 of the whitepaper). */
 export type WseErrorCode =
@@ -9,8 +10,11 @@ export type WseErrorCode =
   | "PAGE_TOO_LARGE"
   | "UNSUPPORTED_PAGE";
 
-/** "auto" = real-time clock (default). "scroll" = viewport as playhead (§45). */
-export type DriveMode = "auto" | "scroll";
+/**
+ * "auto" = real-time clock (default). "scroll" = viewport as playhead (§45).
+ * "live" = DOM mutations drive a live performance (§29–31).
+ */
+export type DriveMode = "auto" | "scroll" | "live";
 
 /** Content script → popup. */
 export interface FeaturesMessage {
@@ -47,6 +51,16 @@ export interface ScrollStopMessage {
   type: "WSE_SCROLL_STOP";
 }
 
+/** Content script (mutation-tracker) → service worker → offscreen document. */
+export interface MutationBatchMessage {
+  type: "WSE_MUTATION_BATCH";
+  batch: MutationBatch;
+}
+/** Popup/service worker → content script (mutation-tracker): detach and clean up. */
+export interface MutationStopMessage {
+  type: "WSE_MUTATION_STOP";
+}
+
 /** Service worker → offscreen document. */
 export interface OffscreenPlayMessage {
   type: "WSE_OFFSCREEN_PLAY";
@@ -67,6 +81,11 @@ export interface OffscreenScrollMessage {
   type: "WSE_OFFSCREEN_SCROLL";
   target: "wse-offscreen";
   fraction: number;
+}
+export interface OffscreenMutationMessage {
+  type: "WSE_OFFSCREEN_MUTATION_BATCH";
+  target: "wse-offscreen";
+  batch: MutationBatch;
 }
 
 export interface PlaybackState {
@@ -91,7 +110,10 @@ export type WseMessage =
   | GetStateMessage
   | ScrollPositionMessage
   | ScrollStopMessage
+  | MutationBatchMessage
+  | MutationStopMessage
   | OffscreenPlayMessage
   | OffscreenStopMessage
   | OffscreenGetStateMessage
-  | OffscreenScrollMessage;
+  | OffscreenScrollMessage
+  | OffscreenMutationMessage;
