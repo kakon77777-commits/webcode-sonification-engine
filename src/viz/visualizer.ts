@@ -1,5 +1,6 @@
 import type { VizPayload } from "../shared/types.js";
 import { WseAudioEngine } from "../audio/engine.js";
+import { exportScoreAsWav } from "../audio/export-wav.js";
 import { LAYER_COLORS, LAYER_LABELS, mountViz, type VizHandles } from "./viz-core.js";
 
 /**
@@ -99,6 +100,22 @@ $("overlay-start").addEventListener("click", async () => {
   if (!payload) return;
   await engine.stop();
   await startPlayback(payload);
+});
+$<HTMLButtonElement>("exportWav").addEventListener("click", async () => {
+  if (!payload) return;
+  const btn = $<HTMLButtonElement>("exportWav");
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Rendering…";
+  try {
+    await exportScoreAsWav(payload.score, {
+      brightness: payload.tuning.brightness,
+      reverb: payload.tuning.reverb,
+    });
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
 });
 
 void init();

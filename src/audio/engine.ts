@@ -1,6 +1,7 @@
 import type { Score } from "../shared/types.js";
 import { LookaheadScheduler } from "./scheduler.js";
-import { playNote, type VoiceDestinations } from "./instruments.js";
+import { playNote } from "./instruments.js";
+import { buildMasterGraph } from "./graph.js";
 
 /**
  * Audio engine: master chain (gain → compressor → destination) plus a shared
@@ -21,21 +22,6 @@ export interface PlayOptions {
   onEnded?: () => void;
 }
 
-/** 1.8 s decaying-noise impulse response — procedural, no assets. */
-function makeImpulseResponse(ctx: BaseAudioContext): AudioBuffer {
-  const seconds = 1.8;
-  const rate = ctx.sampleRate;
-  const len = Math.floor(seconds * rate);
-  const buf = ctx.createBuffer(2, len, rate);
-  for (let ch = 0; ch < 2; ch++) {
-    const data = buf.getChannelData(ch);
-    for (let i = 0; i < len; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.4);
-    }
-  }
-  return buf;
-}
-
 export class WseAudioEngine {
   private ctx: AudioContext | null = null;
   private scheduler: LookaheadScheduler | null = null;
@@ -49,27 +35,12 @@ export class WseAudioEngine {
     this.ctx = ctx;
     this.onEnded = opts.onEnded ?? null;
 
-    const master = ctx.createGain();
-    master.gain.value = 0.75;
-    const compressor = ctx.createDynamicsCompressor();
-    compressor.threshold.value = -18;
-    compressor.knee.value = 12;
-    compressor.ratio.value = 3;
-    compressor.attack.value = 0.01;
-    compressor.release.value = 0.2;
-    master.connect(compressor);
-    compressor.connect(ctx.destination);
+    const { master, dest } = buildMasterGraph(ctx, {
+      brightness: opts.brightness,
+      reverb: opts.reverb,
+      seed: score.fingerprint.seed,
+    });
     this.master = master;
-
-    const reverb = ctx.createConvolver();
-    reverb.buffer = makeImpulseResponse(ctx);
-    const reverbReturn = ctx.createGain();
-    // Reverb slider: 0 → nearly dry, 0.5 → the v0.1 default, 1 → washy.
-    reverbReturn.gain.value = 0.15 + 1.3 * (opts.reverb ?? 0.5);
-    reverb.connect(reverbReturn);
-    reverbReturn.connect(master);
-
-    const dest: VoiceDestinations = { dry: master, reverb, brightness: opts.brightness ?? 0.5 };
 
     if (ctx.state === "suspended") {
       await ctx.resume();

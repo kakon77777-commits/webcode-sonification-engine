@@ -3,6 +3,7 @@ import { DEFAULT_TUNING } from "../shared/types.js";
 import type { PlaybackState, WseErrorCode } from "../shared/messages.js";
 import { computeFingerprint } from "../mapping/fingerprint.js";
 import { generateScore } from "../mapping/default-map.js";
+import { exportScoreAsWav } from "../audio/export-wav.js";
 
 /**
  * Popup: Analyze & Play / Stop / Regenerate (§49).
@@ -16,6 +17,7 @@ const analyzeBtn = $<HTMLButtonElement>("analyze");
 const visualizeBtn = $<HTMLButtonElement>("visualize");
 const stopBtn = $<HTMLButtonElement>("stop");
 const regenBtn = $<HTMLButtonElement>("regen");
+const exportBtn = $<HTMLButtonElement>("export-wav");
 const modeSel = $<HTMLSelectElement>("mode");
 const styleSel = $<HTMLSelectElement>("style");
 const infoBox = $<HTMLDivElement>("info");
@@ -25,6 +27,7 @@ const errorBox = $<HTMLDivElement>("error");
 const statusBox = $<HTMLDivElement>("status");
 
 let lastFeatures: PageFeatures | null = null;
+let lastScore: Score | null = null;
 let variation = 0;
 
 /** Tuning sliders — part of Θ, persisted, fully deterministic. */
@@ -164,8 +167,10 @@ async function analyzeAndPlay(): Promise<void> {
     const features = await extractFromActiveTab();
     lastFeatures = features;
     const score = buildScore(features);
+    lastScore = score;
     renderScore(score, features.dom.totalNodes);
     regenBtn.disabled = false;
+    exportBtn.disabled = false;
     setStatus("Starting audio…");
     await playScore(score);
   } catch (err) {
@@ -187,6 +192,7 @@ async function analyzeAndVisualize(): Promise<void> {
     const features = await extractFromActiveTab();
     lastFeatures = features;
     const score = buildScore(features);
+    lastScore = score;
     // One audio source at a time: the visualizer tab plays, offscreen stops.
     await chrome.runtime.sendMessage({ type: "WSE_STOP" });
     await chrome.storage.local.set({
@@ -219,9 +225,29 @@ async function regenerate(): Promise<void> {
   clearError();
   variation++;
   const score = buildScore(lastFeatures);
+  lastScore = score;
   renderScore(score, lastFeatures.dom.totalNodes);
   setStatus(`Variation ${variation}…`);
   await playScore(score);
+}
+
+/** Render the current score offline and download it as a WAV file (§52 Export). */
+async function exportWav(): Promise<void> {
+  if (!lastScore) return;
+  clearError();
+  exportBtn.disabled = true;
+  const prevStatus = statusBox.textContent ?? "";
+  setStatus("Rendering WAV…");
+  try {
+    const tuning = currentTuning();
+    await exportScoreAsWav(lastScore, { brightness: tuning.brightness, reverb: tuning.reverb });
+    setStatus("WAV downloaded.");
+  } catch (err) {
+    showError("AUDIO_BLOCKED", err instanceof Error ? err.message : String(err));
+    setStatus(prevStatus);
+  } finally {
+    exportBtn.disabled = false;
+  }
 }
 
 async function saveSettings(): Promise<void> {
@@ -269,6 +295,7 @@ analyzeBtn.addEventListener("click", () => void analyzeAndPlay());
 visualizeBtn.addEventListener("click", () => void analyzeAndVisualize());
 stopBtn.addEventListener("click", () => void stop());
 regenBtn.addEventListener("click", () => void regenerate());
+exportBtn.addEventListener("click", () => void exportWav());
 styleSel.addEventListener("change", () => void saveSettings());
 modeSel.addEventListener("change", () => void saveSettings());
 for (const el of Object.values(sliders)) {

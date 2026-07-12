@@ -1,4 +1,5 @@
 import type { InstrumentName, NoteEvent } from "../shared/types.js";
+import { mulberry32 } from "../mapping/deterministic-seed.js";
 
 /**
  * v0.1 synth voices (§ Task 9): oscillators + gain + filter + simple envelopes.
@@ -45,13 +46,26 @@ export function midiToFreq(midi: number): number {
 }
 
 let noiseCache = new WeakMap<BaseAudioContext, AudioBuffer>();
+let noiseSeeds = new WeakMap<BaseAudioContext, number>();
+
+/**
+ * Seeds the shared per-context noise buffer (percussion transients, breath
+ * textures) so identical scores render byte-identical audio. Call this
+ * before the first playNote() on a given context — buildMasterGraph() does.
+ */
+export function setNoiseSeed(ctx: BaseAudioContext, seed: number): void {
+  noiseSeeds.set(ctx, seed);
+}
 
 function noiseBuffer(ctx: BaseAudioContext): AudioBuffer {
   let buf = noiseCache.get(ctx);
   if (!buf) {
+    // XOR with a fixed constant so this noise stream doesn't correlate with
+    // the reverb impulse response, which is seeded from the same score seed.
+    const rng = mulberry32((noiseSeeds.get(ctx) ?? 0) ^ 0x2545f491);
     buf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     const data = buf.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    for (let i = 0; i < data.length; i++) data[i] = rng() * 2 - 1;
     noiseCache.set(ctx, buf);
   }
   return buf;

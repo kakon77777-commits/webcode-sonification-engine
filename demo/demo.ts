@@ -1,8 +1,9 @@
-import type { ModeName, StyleName, TuningOptions } from "../src/shared/types.js";
+import type { ModeName, Score, StyleName, TuningOptions } from "../src/shared/types.js";
 import { extractPageFeatures } from "../src/content/extract.js";
 import { computeFingerprint } from "../src/mapping/fingerprint.js";
 import { generateScore } from "../src/mapping/default-map.js";
 import { WseAudioEngine } from "../src/audio/engine.js";
+import { exportScoreAsWav } from "../src/audio/export-wav.js";
 import { LAYER_COLORS, LAYER_LABELS, mountViz, type VizHandles } from "../src/viz/viz-core.js";
 
 /**
@@ -12,6 +13,7 @@ import { LAYER_COLORS, LAYER_LABELS, mountViz, type VizHandles } from "../src/vi
 
 const engine = new WseAudioEngine();
 let variation = 0;
+let lastScore: Score | null = null;
 
 const $ = (id: string) => document.getElementById(id)!;
 const out = $("out");
@@ -68,6 +70,7 @@ function renderVizLegend(): void {
 
 async function play() {
   const { features, fingerprint, score } = analyze();
+  lastScore = score;
   (window as any).__wse = {
     features,
     fingerprint,
@@ -99,6 +102,7 @@ async function play() {
   (window as any).__wseViz = viz;
   viz.start();
 
+  ($("exportWav") as HTMLButtonElement).disabled = false;
   out.textContent =
     `${score.profile.keyName} · ${score.profile.bpm} BPM · ${score.profile.lengthSec}s · ` +
     `${score.events.length} notes · ${score.profile.character}-led · #${fingerprint.hash}` +
@@ -117,6 +121,20 @@ $("stop").addEventListener("click", () => {
   void engine.stop();
   viz?.stop();
   out.textContent = "stopped";
+});
+$("exportWav").addEventListener("click", async () => {
+  if (!lastScore) return;
+  const btn = $("exportWav") as HTMLButtonElement;
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Rendering…";
+  try {
+    const tuning = currentTuning();
+    await exportScoreAsWav(lastScore, { brightness: tuning.brightness, reverb: tuning.reverb });
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
 });
 
 // Expose analysis (without audio) immediately for tests/automation.

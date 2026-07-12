@@ -221,6 +221,21 @@ button.linkish:hover {
   border: none;
 }
 
+button.linkish-btn {
+  width: 100%;
+  background: none;
+  border: 1px dashed var(--line);
+  color: var(--dim);
+  font-size: 12px;
+  padding: 7px;
+}
+
+button.linkish-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  border-style: solid;
+}
+
 .error {
   color: var(--error);
   font-size: 12px;
