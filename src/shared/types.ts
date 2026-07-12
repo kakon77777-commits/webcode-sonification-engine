@@ -116,7 +116,12 @@ export type InstrumentName =
   | "kick"
   | "hihat"
   | "perc"
-  | "taiko";
+  | "taiko"
+  | "clarinet"
+  | "marimba"
+  | "koto"
+  | "subbass"
+  | "choir";
 
 /** Which structural family dominates the page — drives orchestration (§17). */
 export type PageCharacter = "content" | "navigation" | "media" | "form";
@@ -215,4 +220,4 @@ export interface VizPayload {
   tuning: TuningOptions;
 }
 
-export const WSE_VERSION = "0.4.0";
+export const WSE_VERSION = "0.4.1";

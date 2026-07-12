@@ -10,9 +10,14 @@ import type { NoteEvent } from "../shared/types.js";
 export const MAX_VOICES = 12;
 export const MAX_EVENTS_PER_SECOND = 20;
 
-/** Bass and pads anchor the harmony — drop them last. */
-const PRIORITY: Record<string, number> = {
+/** Bass and pads anchor the harmony — drop them last. Exported so tests can
+ * catch a newly added InstrumentName that's missing an explicit entry here
+ * (this map is intentionally Record<string, ...>, not Record<InstrumentName,
+ * ...>, so TypeScript alone won't catch that — a forgotten entry silently
+ * falls back to the "?? 1" default in keep() instead of erroring). */
+export const PRIORITY: Record<string, number> = {
   bass: 5,
+  subbass: 5,
   lowpad: 4,
   pad: 4,
   piano: 3,
@@ -23,10 +28,14 @@ const PRIORITY: Record<string, number> = {
   flute: 3,
   xiao: 3,
   guitar: 3,
+  clarinet: 3,
+  choir: 3,
+  koto: 3,
   kick: 2,
   taiko: 2,
   bell: 2,
   mallet: 2,
+  marimba: 2,
   pluck: 1,
   hihat: 0,
   perc: 0,

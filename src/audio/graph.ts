@@ -38,18 +38,66 @@ function makeImpulseResponse(ctx: BaseAudioContext, seed: number): AudioBuffer {
   return buf;
 }
 
+/**
+ * A gentle soft-knee clip curve for a WaveShaperNode: exact identity below
+ * `threshold` (typical signal levels pass through completely unchanged),
+ * tanh-curving only the portion above it (only the loudest peaks get
+ * rounded off) — an analog-style "glue" rather than a hard digital ceiling.
+ * Pure and deterministic — no AudioContext needed — so it's unit-testable.
+ */
+export function softClipCurve(threshold = 0.7, samples = 1024): Float32Array {
+  const span = 1 - threshold;
+  const curve = new Float32Array(samples);
+  for (let i = 0; i < samples; i++) {
+    const x = (i / (samples - 1)) * 2 - 1; // -1..1
+    const ax = Math.abs(x);
+    if (ax < threshold) {
+      curve[i] = x;
+    } else {
+      const sign = x < 0 ? -1 : 1;
+      const t = (ax - threshold) / span;
+      curve[i] = sign * (threshold + span * Math.tanh(t));
+    }
+  }
+  return curve;
+}
+
 export function buildMasterGraph(ctx: BaseAudioContext, opts: MasterGraphOptions = {}): MasterGraph {
   setNoiseSeed(ctx, opts.seed ?? 0);
 
   const master = ctx.createGain();
   master.gain.value = 0.75;
+
+  // Mastering-style polish pass: warmth (low shelf) + air (high shelf), then
+  // a gentle soft-clip that rounds off only the loudest peaks (analog-style
+  // glue) before the compressor does its broader leveling.
+  const warmth = ctx.createBiquadFilter();
+  warmth.type = "lowshelf";
+  warmth.frequency.value = 200;
+  warmth.gain.value = 1.5;
+
+  const air = ctx.createBiquadFilter();
+  air.type = "highshelf";
+  air.frequency.value = 9000;
+  air.gain.value = 1.8;
+
+  const saturator = ctx.createWaveShaper();
+  // WaveShaperNode.curve's DOM type pins the buffer to ArrayBuffer; our plain
+  // Float32Array is always ArrayBuffer-backed at runtime, so this cast is safe.
+  saturator.curve = softClipCurve() as Float32Array<ArrayBuffer>;
+  saturator.oversample = "2x";
+
   const compressor = ctx.createDynamicsCompressor();
   compressor.threshold.value = -18;
-  compressor.knee.value = 12;
-  compressor.ratio.value = 3;
-  compressor.attack.value = 0.01;
-  compressor.release.value = 0.2;
-  master.connect(compressor);
+  compressor.knee.value = 14;
+  compressor.ratio.value = 2.8;
+  compressor.attack.value = 0.008;
+  compressor.release.value = 0.18;
+
+  master.connect(warmth);
+  warmth.connect(air);
+  air.connect(saturator);
+  saturator.connect(compressor);
   compressor.connect(ctx.destination);
 
   const reverb = ctx.createConvolver();

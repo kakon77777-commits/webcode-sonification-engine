@@ -43,12 +43,12 @@ interface StylePalette {
 
 const PALETTES: Record<StyleName, StylePalette> = {
   ambient: {
-    melody: { content: "epiano", navigation: "xiao", media: "flute", form: "epiano" },
+    melody: { content: "epiano", navigation: "xiao", media: "flute", form: "choir" },
     arp: { content: "pluck", navigation: "pluck", media: "bell", form: "mallet" },
     bell: { content: "bell", navigation: "mallet", media: "bell", form: "bell" },
   },
   piano: {
-    melody: { content: "piano", navigation: "guitar", media: "epiano", form: "piano" },
+    melody: { content: "piano", navigation: "guitar", media: "clarinet", form: "piano" },
     arp: { content: "piano", navigation: "guitar", media: "piano", form: "piano" },
     bell: { content: "mallet", navigation: "mallet", media: "bell", form: "mallet" },
   },
@@ -59,12 +59,12 @@ const PALETTES: Record<StyleName, StylePalette> = {
   },
   orchestral: {
     melody: { content: "strings", navigation: "flute", media: "brass", form: "strings" },
-    arp: { content: "pluck", navigation: "pluck", media: "mallet", form: "pluck" },
-    bell: { content: "mallet", navigation: "mallet", media: "bell", form: "mallet" },
+    arp: { content: "pluck", navigation: "pluck", media: "marimba", form: "pluck" },
+    bell: { content: "marimba", navigation: "mallet", media: "bell", form: "mallet" },
   },
   eastern: {
-    melody: { content: "xiao", navigation: "pluck", media: "flute", form: "xiao" },
-    arp: { content: "pluck", navigation: "guitar", media: "bell", form: "pluck" },
+    melody: { content: "xiao", navigation: "pluck", media: "flute", form: "koto" },
+    arp: { content: "pluck", navigation: "koto", media: "bell", form: "pluck" },
     bell: { content: "bell", navigation: "mallet", media: "bell", form: "bell" },
   },
 };

@@ -7,7 +7,7 @@
 
 網頁代碼音樂化引擎——讀取目前網頁的 DOM、HTML、CSS 與可存取結構特徵，透過可重現的生成規則把它轉成音樂。
 
-- **Status:** v0.4.0 developer preview (Chrome, Manifest V3)
+- **Status:** v0.4.1 developer preview (Chrome, Manifest V3)
 - **Website:** https://wse.evemisstechnology.com/ (live in-browser demo included)
 - **Repository:** https://github.com/kakon77777-commits/webcode-sonification-engine
 - **License:** Apache-2.0
@@ -49,11 +49,15 @@ The mapping is **deterministic**: the same page structure always produces the sa
 - **Musical** — maximal listenability (tighter quantization and density)
 - **Analytical** — maximal structural fidelity (chromatic melody straight from structure; may not be pretty — that's the point)
 
-### Five instrument profiles
+### Five instrument profiles, 23 instruments
 
 Ambient · Piano · Electronic · Orchestral · **Eastern 東方** — each changes articulation, register, rhythm role and density, not just timbre. A style is a *palette*: the page's structural character picks the actual voices inside it, so a text-heavy blog and a button-farm dashboard sound different even in the same style.
 
-All sounds are synthesized (oscillators + filters + envelopes + procedural reverb); there are no sample libraries. The v0.2 instrument set includes breath-modeled **蕭 (xiao)** and **笛 (flute)**, a Karplus-Strong **guitar**, and **太鼓 (taiko)** drums alongside pads, strings, pianos, bells, plucks and the electronic kit.
+All sounds are synthesized (oscillators + filters + envelopes + procedural reverb); there are no sample libraries. Alongside pads, strings, pianos, bells, plucks and the electronic kit: breath-modeled **蕭 (xiao)**, **笛 (flute)** and **clarinet** (odd-harmonic reed tone), Karplus-Strong **guitar** and **箏/koto** (brighter, shorter-ringing), **太鼓 (taiko)**, **marimba** (inharmonic wooden partials), **subbass** (clean electronic low end) and **choir** (formant-filtered vocal pad).
+
+### Sound design (v0.4.1)
+
+Every sustained/melodic voice has a **filter envelope** — brightness that moves through the note (a bow-attack sweep on strings, felt-damping darkening on piano, a synth-lead "zap") instead of a static, lifeless cutoff. The master bus adds a gentle warmth/air EQ and a soft-knee saturator (exact identity below the threshold, only the loudest peaks get rounded off) before compression — a light mastering pass, not a different synthesis engine. The procedural reverb impulse response has a pre-delay, sparse early reflections, and a tail that progressively darkens (air absorption), replacing flat decaying noise.
 
 ### Customize sliders
 
@@ -123,8 +127,9 @@ The popup answers *“Why does this page sound like this?”* — e.g. *“high 
 ## Development
 
 ```
-npm test          # 72 tests: determinism, scale guardrail, density caps, privacy,
-                   # 4-fixture identity, scroll scheduler, live-mode mapping, WAV encoder
+npm test          # 85 tests: determinism, scale guardrail, density caps, privacy,
+                   # 4-fixture identity, scroll scheduler, live-mode mapping, WAV encoder,
+                   # reverb IR shape, master-bus saturation curve, instrument-table coverage
 npm run typecheck
 npm run build     # → dist/ (extension) + demo/demo.js
 ```
@@ -172,6 +177,7 @@ WSE deliberately claims a narrower, different thing:
 
 ## Changelog
 
+- **v0.4.1** — Sound quality pass: filter envelopes on every sustained voice (pad, lowpad, strings, piano, pluck, lead, epiano), a redesigned procedural reverb (pre-delay + early reflections + darkening tail instead of flat noise), and a master-bus warmth/air EQ + soft-knee saturator ahead of the compressor. Five new instruments — clarinet, marimba, 箏/koto, subbass, choir — wired into the orchestration palette (23 instruments total). 85 tests, including offline-WAV-render verification in-browser for every new voice (real energy, zero clipping).
 - **v0.4.0** — Scroll Mode (§45, viewport as playhead, with rewind-safe scrubbing) and Mutation Mode (§29–31, live DOM performance with an ambient bed + rate-limited reactive layer), both browser-verified with a live-DOM-mutation self-feedback bug found and fixed along the way; WAV export (offline render through the exact live-playback synthesis graph); deterministic-audio fix (reverb impulse response and percussion/breath noise were previously `Math.random()` — now seeded from the score's fingerprint, so replaying or re-exporting the same score reproduces the same "room"); 72 tests
 - **v0.3.0** — Visualizer: full-tab "watch the code become music" view (token stream + karaoke-style highlights + scrolling piano roll), note provenance layers, `data-wse-ignore` extraction opt-out, 41 tests
 - **v0.2.0** — cross-site differentiation overhaul: structure-driven orchestration (§17 "Orchestra by Web Architecture"), 7 scales, tag-entropy tempo spread, Euclidean rhythm signatures; new instruments 蕭/笛/guitar/太鼓; Eastern style; customize sliders (tempo/density/brightness/reverb); product site at wse.evemisstechnology.com
@@ -179,7 +185,7 @@ WSE deliberately claims a narrower, different thing:
 
 ## Roadmap
 
-- **v0.5** — custom mapping profiles, MIDI export, advanced instruments
+- **v0.5** — custom mapping profiles, MIDI export
 - **v1.0** — Firefox, public mapping SDK, research dataset
 
 ## Authorship

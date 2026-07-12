@@ -34,6 +34,11 @@ const REVERB_SEND: Record<InstrumentName, number> = {
   hihat: 0.08,
   perc: 0.25,
   taiko: 0.2,
+  clarinet: 0.3,
+  marimba: 0.3,
+  koto: 0.25,
+  subbass: 0.03,
+  choir: 0.55,
 };
 
 /** Brightness slider → filter-cutoff multiplier (0.55×…1.45×). */
@@ -157,7 +162,13 @@ const padVoice =
     const attack = Math.min(1.2, ev.duration * 0.3);
     const release = 1.4;
     const stopAt = adsr(env, when, ev.velocity * 0.28, attack, ev.duration, release, 0.8);
-    const filter = lowpass(ctx, (cutoffBase + ev.velocity * 2200) * bright);
+    // Filter envelope: swells open through the attack, eases back on release —
+    // a static cutoff reads as a flat, lifeless pad no matter how good the waveform is.
+    const peakCutoff = (cutoffBase + ev.velocity * 2200) * bright;
+    const filter = lowpass(ctx, peakCutoff * 0.4);
+    filter.frequency.setValueAtTime(peakCutoff * 0.4, when);
+    filter.frequency.linearRampToValueAtTime(peakCutoff, when + attack);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(60, peakCutoff * 0.55), stopAt);
     filter.connect(env);
     osc(ctx, "sawtooth", freq, when, stopAt, -7).connect(filter);
     osc(ctx, "sawtooth", freq, when, stopAt, +7).connect(filter);
@@ -171,7 +182,11 @@ const VOICES: Record<InstrumentName, VoiceBuilder> = {
   strings: (ctx, env, ev, when, bright) => {
     const freq = midiToFreq(ev.pitch);
     const stopAt = adsr(env, when, ev.velocity * 0.3, 0.12, ev.duration, 0.5, 0.85);
-    const filter = lowpass(ctx, (1100 + ev.velocity * 1800) * bright, 0.7);
+    // Bow-attack sweep: the tone brightens as the bow "catches" the string.
+    const peakCutoff = (1100 + ev.velocity * 1800) * bright;
+    const filter = lowpass(ctx, peakCutoff * 0.45, 0.7);
+    filter.frequency.setValueAtTime(peakCutoff * 0.45, when);
+    filter.frequency.linearRampToValueAtTime(peakCutoff, when + 0.15);
     filter.connect(env);
     const o = osc(ctx, "sawtooth", freq, when, stopAt);
     o.connect(filter);
@@ -184,11 +199,48 @@ const VOICES: Record<InstrumentName, VoiceBuilder> = {
     return { out: env, stopAt };
   },
 
+  // Choir — a two-oscillator sawtooth "ensemble" shaped by two resonant
+  // bandpass formants (roughly an "ah" vowel), the classic cheap-and-honest
+  // way to make a synth sound vaguely vocal. Slow attack for a held-voice swell.
+  choir: (ctx, env, ev, when, bright) => {
+    const freq = midiToFreq(ev.pitch);
+    const attack = Math.min(0.5, ev.duration * 0.35);
+    const stopAt = adsr(env, when, ev.velocity * 0.16, attack, ev.duration, 0.5, 0.8);
+    const f1 = ctx.createBiquadFilter();
+    f1.type = "bandpass";
+    f1.frequency.value = 700 * bright;
+    f1.Q.value = 6;
+    const f2 = ctx.createBiquadFilter();
+    f2.type = "bandpass";
+    f2.frequency.value = 1150 * bright;
+    f2.Q.value = 8;
+    f1.connect(env);
+    f2.connect(env);
+    const o1 = osc(ctx, "sawtooth", freq, when, stopAt, -6);
+    const o2 = osc(ctx, "sawtooth", freq, when, stopAt, +6);
+    o1.connect(f1);
+    o1.connect(f2);
+    o2.connect(f1);
+    o2.connect(f2);
+    const lfo = osc(ctx, "sine", 4.8, when, stopAt);
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.setValueAtTime(0, when);
+    lfoGain.gain.linearRampToValueAtTime(6, when + attack + 0.2);
+    lfo.connect(lfoGain);
+    lfoGain.connect(o1.detune);
+    lfoGain.connect(o2.detune);
+    return { out: env, stopAt };
+  },
+
   piano: (ctx, env, ev, when, bright) => {
     const freq = midiToFreq(ev.pitch);
     const decay = Math.min(2.2, 0.5 + ev.duration);
     const stopAt = expDecay(env, when + 0.004, ev.velocity * 0.5, decay);
-    const filter = lowpass(ctx, (2200 + ev.velocity * 3000) * bright, 0.5);
+    // Hammer-strike brightness fades as the string settles — felt damping.
+    const peakCutoff = (2200 + ev.velocity * 3000) * bright;
+    const filter = lowpass(ctx, peakCutoff, 0.5);
+    filter.frequency.setValueAtTime(peakCutoff, when);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(400, peakCutoff * 0.22), when + decay);
     filter.connect(env);
     osc(ctx, "triangle", freq, when, stopAt).connect(filter);
     const partial = ctx.createGain();
@@ -198,15 +250,25 @@ const VOICES: Record<InstrumentName, VoiceBuilder> = {
     return { out: env, stopAt };
   },
 
-  epiano: (ctx, env, ev, when) => {
+  epiano: (ctx, env, ev, when, bright) => {
     const freq = midiToFreq(ev.pitch);
     const decay = Math.min(2.5, 0.8 + ev.duration);
     const stopAt = expDecay(env, when + 0.008, ev.velocity * 0.42, decay);
-    osc(ctx, "sine", freq, when, stopAt).connect(env);
+    const filter = lowpass(ctx, 3600 * bright, 0.6);
+    filter.frequency.setValueAtTime(3600 * bright, when);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(500, 1400 * bright), when + decay * 0.6);
+    filter.connect(env);
+    osc(ctx, "sine", freq, when, stopAt).connect(filter);
     const partial = ctx.createGain();
     partial.gain.value = 0.08;
-    partial.connect(env);
+    partial.connect(filter);
     osc(ctx, "sine", freq * 3, when, stopAt).connect(partial);
+    // A touch of FM-ish bite on the attack — the classic electric-piano "bark".
+    const bite = ctx.createGain();
+    bite.gain.setValueAtTime(0.06, when);
+    bite.gain.exponentialRampToValueAtTime(0.0005, when + 0.15);
+    bite.connect(env);
+    osc(ctx, "sine", freq * 7, when, when + 0.16).connect(bite);
     return { out: env, stopAt };
   },
 
@@ -214,7 +276,10 @@ const VOICES: Record<InstrumentName, VoiceBuilder> = {
     const freq = midiToFreq(ev.pitch);
     const decay = Math.min(0.5, 0.1 + ev.duration * 0.4);
     const stopAt = expDecay(env, when + 0.003, ev.velocity * 0.4, decay);
-    const filter = lowpass(ctx, 2600 * bright, 1);
+    const peakCutoff = 2600 * bright;
+    const filter = lowpass(ctx, peakCutoff, 1);
+    filter.frequency.setValueAtTime(peakCutoff, when);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(300, peakCutoff * 0.3), when + decay);
     filter.connect(env);
     osc(ctx, "triangle", freq, when, stopAt).connect(filter);
     return { out: env, stopAt };
@@ -256,6 +321,34 @@ const VOICES: Record<InstrumentName, VoiceBuilder> = {
     return { out: env, stopAt };
   },
 
+  // Marimba — wooden bar: fundamental + a detuned-from-harmonic partial (real
+  // wooden bars aren't perfectly harmonic, which is exactly the "wood" cue),
+  // plus a bandpassed knock transient instead of mallet's broadband click.
+  marimba: (ctx, env, ev, when) => {
+    const freq = midiToFreq(ev.pitch);
+    const stopAt = expDecay(env, when + 0.002, ev.velocity * 0.45, 0.35);
+    osc(ctx, "sine", freq, when, stopAt).connect(env);
+    const partial = ctx.createGain();
+    partial.gain.value = 0.22;
+    partial.connect(env);
+    osc(ctx, "sine", freq * 3.97, when, stopAt).connect(partial);
+    const knock = ctx.createBufferSource();
+    knock.buffer = noiseBuffer(ctx);
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = Math.min(2200, freq * 2.2);
+    bp.Q.value = 2.5;
+    const kGain = ctx.createGain();
+    kGain.gain.setValueAtTime(ev.velocity * 0.1, when);
+    kGain.gain.exponentialRampToValueAtTime(0.0005, when + 0.02);
+    knock.connect(bp);
+    bp.connect(kGain);
+    kGain.connect(env);
+    knock.start(when);
+    knock.stop(when + 0.03);
+    return { out: env, stopAt };
+  },
+
   bass: (ctx, env, ev, when) => {
     const freq = midiToFreq(ev.pitch);
     const stopAt = adsr(env, when, ev.velocity * 0.5, 0.015, ev.duration * 0.8, 0.25, 0.6);
@@ -266,6 +359,27 @@ const VOICES: Record<InstrumentName, VoiceBuilder> = {
     sub.gain.value = 0.5;
     sub.connect(filter);
     osc(ctx, "sine", freq / 2, when, stopAt).connect(sub);
+    return { out: env, stopAt };
+  },
+
+  // Sub bass — clean, mostly-sine deep low end (electronic's answer to
+  // `bass`'s triangle growl): almost no upper harmonics, so it sits under a
+  // mix without fighting for space, with only a whisper of triangle so it
+  // still reads as a pitch on small speakers.
+  subbass: (ctx, env, ev, when) => {
+    const freq = midiToFreq(ev.pitch);
+    const stopAt = adsr(env, when, ev.velocity * 0.6, 0.008, ev.duration * 0.7, 0.15, 0.55);
+    const filter = lowpass(ctx, 220, 0.6);
+    filter.connect(env);
+    osc(ctx, "sine", freq, when, stopAt).connect(filter);
+    const sub = ctx.createGain();
+    sub.gain.value = 0.65;
+    sub.connect(filter);
+    osc(ctx, "sine", freq / 2, when, stopAt).connect(sub);
+    const grit = ctx.createGain();
+    grit.gain.value = 0.08;
+    grit.connect(filter);
+    osc(ctx, "triangle", freq, when, stopAt).connect(grit);
     return { out: env, stopAt };
   },
 
@@ -283,7 +397,12 @@ const VOICES: Record<InstrumentName, VoiceBuilder> = {
   lead: (ctx, env, ev, when, bright) => {
     const freq = midiToFreq(ev.pitch);
     const stopAt = adsr(env, when, ev.velocity * 0.3, 0.02, ev.duration, 0.18, 0.75);
-    const filter = lowpass(ctx, 2800 * bright, 1.1);
+    // Fast filter "zap" on the attack, settling for sustain — classic synth-lead bite.
+    const peakCutoff = 2800 * bright;
+    const filter = lowpass(ctx, peakCutoff * 0.35, 1.1);
+    filter.frequency.setValueAtTime(peakCutoff * 0.35, when);
+    filter.frequency.exponentialRampToValueAtTime(peakCutoff, when + 0.035);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(250, peakCutoff * 0.5), stopAt);
     filter.connect(env);
     osc(ctx, "square", freq, when, stopAt, -4).connect(filter);
     osc(ctx, "sawtooth", freq, when, stopAt, +4).connect(filter);
@@ -313,6 +432,43 @@ const VOICES: Record<InstrumentName, VoiceBuilder> = {
     bp.Q.value = 2;
     const bGain = ctx.createGain();
     bGain.gain.value = ev.velocity * 0.045;
+    breath.connect(bp);
+    bp.connect(bGain);
+    bGain.connect(env);
+    breath.start(when);
+    breath.stop(stopAt);
+    return { out: env, stopAt };
+  },
+
+  // Clarinet — odd-harmonic reed tone. A square wave is the classic synthesis
+  // approximation of a cylindrical reed bore (predominantly odd partials),
+  // giving it a hollower, "woodier" character than the sine-based winds.
+  clarinet: (ctx, env, ev, when, bright) => {
+    const freq = midiToFreq(ev.pitch);
+    const stopAt = adsr(env, when, ev.velocity * 0.3, 0.06, ev.duration, 0.28, 0.82);
+    const peakCutoff = 1600 * bright;
+    const filter = lowpass(ctx, peakCutoff, 0.9);
+    filter.frequency.setValueAtTime(peakCutoff, when);
+    filter.frequency.linearRampToValueAtTime(Math.max(600, peakCutoff * 0.75), when + ev.duration * 0.6);
+    filter.connect(env);
+    const o = osc(ctx, "square", freq, when, stopAt);
+    o.connect(filter);
+    // Modest vibrato — reed instruments are often played straighter than flute.
+    const lfo = osc(ctx, "sine", 4.6, when, stopAt);
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.setValueAtTime(0, when);
+    lfoGain.gain.linearRampToValueAtTime(5, when + 0.3);
+    lfo.connect(lfoGain);
+    lfoGain.connect(o.detune);
+    // Reed noise: a narrow, nasal band right around the fundamental.
+    const breath = ctx.createBufferSource();
+    breath.buffer = noiseBuffer(ctx);
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = Math.min(3000, freq * 1.2);
+    bp.Q.value = 4;
+    const bGain = ctx.createGain();
+    bGain.gain.value = ev.velocity * 0.03;
     breath.connect(bp);
     bp.connect(bGain);
     bGain.connect(env);
@@ -386,6 +542,40 @@ const VOICES: Record<InstrumentName, VoiceBuilder> = {
     // Loop gain tuned so the string rings out over ~ringSec, then is killed.
     feedback.gain.setValueAtTime(Math.pow(0.001, 1 / (freq * ringSec)), when);
     feedback.gain.setValueAtTime(0, when + ringSec + 0.05); // break the cycle
+    burstGain.connect(delay);
+    delay.connect(damp);
+    damp.connect(feedback);
+    feedback.connect(delay);
+    damp.connect(env);
+    return { out: env, stopAt };
+  },
+
+  // 箏/Koto — brighter, shorter-ringing plucked string than guitar: a
+  // snappier burst and less damping give it a "plinky" metallic-silk
+  // character instead of guitar's warmer, longer sustain.
+  koto: (ctx, env, ev, when, bright) => {
+    const freq = midiToFreq(ev.pitch);
+    const ringSec = Math.min(1.4, 0.35 + ev.duration * 0.5);
+    const stopAt = when + ringSec + 0.2;
+    env.gain.setValueAtTime(ev.velocity * 0.5, when);
+    env.gain.setValueAtTime(ev.velocity * 0.5, when + ringSec * 0.5);
+    env.gain.linearRampToValueAtTime(0, when + ringSec);
+
+    const burst = ctx.createBufferSource();
+    burst.buffer = noiseBuffer(ctx);
+    const burstGain = ctx.createGain();
+    burstGain.gain.setValueAtTime(1, when);
+    burstGain.gain.exponentialRampToValueAtTime(0.001, when + 0.006);
+    burst.connect(burstGain);
+    burst.start(when);
+    burst.stop(when + 0.012);
+
+    const delay = ctx.createDelay(1);
+    delay.delayTime.value = 1 / freq;
+    const damp = lowpass(ctx, Math.min(8000, freq * 9 * bright), 0.3);
+    const feedback = ctx.createGain();
+    feedback.gain.setValueAtTime(Math.pow(0.001, 1 / (freq * ringSec)), when);
+    feedback.gain.setValueAtTime(0, when + ringSec + 0.05);
     burstGain.connect(delay);
     delay.connect(damp);
     damp.connect(feedback);

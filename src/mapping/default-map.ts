@@ -121,7 +121,7 @@ const STYLES: Record<StyleName, StyleConfig> = {
   electronic: {
     melody: "lead",
     pad: "pad",
-    bass: "bass",
+    bass: "subbass",
     arp: "pluck",
     bell: "bell",
     melodyOctave: 4,

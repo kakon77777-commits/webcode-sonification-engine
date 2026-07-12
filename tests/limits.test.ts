@@ -6,8 +6,24 @@ import {
   MAX_VOICES,
   maxEventsPerSecond,
   maxSimultaneousVoices,
+  PRIORITY,
 } from "../src/mapping/limits.js";
+import type { InstrumentName } from "../src/shared/types.js";
 import { syntheticFeatures } from "./helpers.js";
+
+const ALL_INSTRUMENTS: InstrumentName[] = [
+  "pad", "lowpad", "strings", "piano", "epiano", "pluck", "bell", "mallet",
+  "bass", "brass", "lead", "flute", "xiao", "guitar", "kick", "hihat",
+  "perc", "taiko", "clarinet", "marimba", "koto", "subbass", "choir",
+];
+
+describe("density-limiter priority table completeness", () => {
+  it("every InstrumentName has an explicit PRIORITY entry (no silent fallback)", () => {
+    for (const inst of ALL_INSTRUMENTS) {
+      expect(PRIORITY[inst], `missing PRIORITY entry for "${inst}"`).toBeDefined();
+    }
+  });
+});
 
 describe("density limiter (§38, §74): huge sites cannot explode into noise", () => {
   const monster = syntheticFeatures({
