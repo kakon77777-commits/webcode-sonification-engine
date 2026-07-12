@@ -7,7 +7,7 @@
 
 網頁代碼音樂化引擎——讀取目前網頁的 DOM、HTML、CSS 與可存取結構特徵，透過可重現的生成規則把它轉成音樂。
 
-- **Status:** v0.3.0 developer preview (Chrome, Manifest V3)
+- **Status:** v0.4.0 developer preview (Chrome, Manifest V3)
 - **Website:** https://wse.evemisstechnology.com/ (live in-browser demo included)
 - **Repository:** https://github.com/kakon77777-commits/webcode-sonification-engine
 - **License:** Apache-2.0
@@ -71,6 +71,16 @@ Seed = Hash(CanonicalURL, StructuralFingerprint)
 
 Never the URL alone — if a site's structure changes, its music changes too. **Regenerate** mixes a variation index into the seed: a new piece that keeps the site's key and tempo identity.
 
+### Three playback modes (v0.4)
+
+- **Auto** (default) — the score plays on a real-time clock, exactly as composed.
+- **Scroll = playhead** (§45, "Scrolling Page = Vertical Score") — your scroll position *is* the timeline. Scroll down and you play forward through the piece; scroll back up and it goes silent — no retrigger — until you scroll forward past those notes again, like scrubbing a video. A big jump (e.g. "scroll to bottom") is thinned so it can't stack into a wall of sound.
+- **Live = DOM changes** (§29–31, "Live Website Performance") — a quiet ambient bed (pad + bass, from the same key/scale/tempo the page's structure already set) loops underneath, and the page's own runtime activity plays on top: a node being added is an onset, a node being removed is a darker release, an attribute changing is a quiet modulation blip. A quiet page just stays quiet — that's honest, not broken. Density-limited (≤10 events/sec) so an animation-heavy page can't turn into noise.
+
+### Export
+
+**Export WAV** renders the current score offline (through the identical synthesis graph you just heard — not a separate export path) and downloads a standard 16-bit PCM `.wav` file, entirely client-side. Available in the popup, the visualizer tab, and the web demo.
+
 ---
 
 ## Install (developer mode)
@@ -113,7 +123,8 @@ The popup answers *“Why does this page sound like this?”* — e.g. *“high 
 ## Development
 
 ```
-npm test          # 28 tests: determinism, scale guardrail, density caps, privacy, 4-fixture identity
+npm test          # 72 tests: determinism, scale guardrail, density caps, privacy,
+                   # 4-fixture identity, scroll scheduler, live-mode mapping, WAV encoder
 npm run typecheck
 npm run build     # → dist/ (extension) + demo/demo.js
 ```
@@ -124,15 +135,20 @@ Integration fixtures (`tests/fixtures/`): a blog, a dashboard, an e-commerce gri
 
 ```
 src/
-  content/     extractor (DOM / style / geometry / script features)
-  mapping/     fingerprint · normalizer · music profile · score generator · quantizer · limits
-  audio/       synth instruments · lookahead scheduler · engine (offscreen Web Audio)
+  content/     extractors (DOM / style / geometry / script features) + live trackers
+               (scroll-tracker.ts, mutation-tracker.ts — tag names only, never values)
+  mapping/     fingerprint · normalizer · music profile · score generator · quantizer ·
+               limits · layer-tags (shared tag→layer table) · live (Mutation Mode mapping)
+  audio/       synth instruments · master graph · lookahead + scroll schedulers · engine
+               (offscreen Web Audio) · offline WAV render · WAV encoder
+  viz/         shared visualizer core (token stream + piano roll), used by the extension's
+               visualizer tab and the web demo
   background/  MV3 service worker (offscreen lifecycle + message routing)
   ui/          popup
   shared/      types · messages
 ```
 
-Audio plays in an **offscreen document** (MV3 service workers have no DOM), created on demand with the `AUDIO_PLAYBACK` reason and torn down on stop.
+Audio plays in an **offscreen document** (MV3 service workers have no DOM), created on demand with the `AUDIO_PLAYBACK` reason and torn down on stop. Scroll Mode and Mutation Mode inject a small, idempotent content-script tracker only while active, which relays a scroll fraction or batched mutation tag-names through the service worker to that offscreen engine — no page content ever passes through.
 
 ## Prior art & acknowledgments
 
@@ -156,13 +172,13 @@ WSE deliberately claims a narrower, different thing:
 
 ## Changelog
 
+- **v0.4.0** — Scroll Mode (§45, viewport as playhead, with rewind-safe scrubbing) and Mutation Mode (§29–31, live DOM performance with an ambient bed + rate-limited reactive layer), both browser-verified with a live-DOM-mutation self-feedback bug found and fixed along the way; WAV export (offline render through the exact live-playback synthesis graph); deterministic-audio fix (reverb impulse response and percussion/breath noise were previously `Math.random()` — now seeded from the score's fingerprint, so replaying or re-exporting the same score reproduces the same "room"); 72 tests
 - **v0.3.0** — Visualizer: full-tab "watch the code become music" view (token stream + karaoke-style highlights + scrolling piano roll), note provenance layers, `data-wse-ignore` extraction opt-out, 41 tests
 - **v0.2.0** — cross-site differentiation overhaul: structure-driven orchestration (§17 "Orchestra by Web Architecture"), 7 scales, tag-entropy tempo spread, Euclidean rhythm signatures; new instruments 蕭/笛/guitar/太鼓; Eastern style; customize sliders (tempo/density/brightness/reverb); product site at wse.evemisstechnology.com
 - **v0.1.0** — MVP per the technical whitepaper: MV3 extension, deterministic pipeline, 4 styles, offscreen Web Audio, 28 tests
 
 ## Roadmap
 
-- **v0.4** — Scroll Mode (viewport as playhead), Mutation Mode (live DOM performance), WAV export
 - **v0.5** — custom mapping profiles, MIDI export, advanced instruments
 - **v1.0** — Firefox, public mapping SDK, research dataset
 

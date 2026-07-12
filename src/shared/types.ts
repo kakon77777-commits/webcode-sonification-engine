@@ -215,4 +215,4 @@ export interface VizPayload {
   tuning: TuningOptions;
 }
 
-export const WSE_VERSION = "0.3.0";
+export const WSE_VERSION = "0.4.0";
