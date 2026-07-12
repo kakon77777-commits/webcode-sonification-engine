@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "WebCode Sonification Engine",
   "version": "0.4.1",
-  "description": "Turns the structure of the current webpage into reproducible generative music. Scroll or DOM changes can drive it live. Local-only analysis; nothing is uploaded.",
+  "description": "Turns webpage structure into reproducible generative music, drivable by scroll or DOM changes. Local-only; nothing uploaded.",
   "permissions": ["activeTab", "scripting", "storage", "offscreen"],
   "action": {
     "default_popup": "popup.html",
