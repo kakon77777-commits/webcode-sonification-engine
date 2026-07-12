@@ -18,6 +18,7 @@ const visualizeBtn = $<HTMLButtonElement>("visualize");
 const stopBtn = $<HTMLButtonElement>("stop");
 const regenBtn = $<HTMLButtonElement>("regen");
 const exportBtn = $<HTMLButtonElement>("export-wav");
+const exportBox = $<HTMLDetailsElement>("export-box");
 const modeSel = $<HTMLSelectElement>("mode");
 const styleSel = $<HTMLSelectElement>("style");
 const playbackSel = $<HTMLSelectElement>("playback");
@@ -200,6 +201,7 @@ async function analyzeAndPlay(): Promise<void> {
     renderScore(score, features.dom.totalNodes);
     regenBtn.disabled = false;
     exportBtn.disabled = false;
+    exportBox.classList.remove("hidden");
     setStatus("Starting audio…");
     await playScore(score);
   } catch (err) {
