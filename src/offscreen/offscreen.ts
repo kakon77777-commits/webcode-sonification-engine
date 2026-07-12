@@ -36,9 +36,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === "WSE_OFFSCREEN_PLAY") {
     const score = msg.score as Score;
     const tuning = msg.tuning as { brightness?: number; reverb?: number } | undefined;
+    const driveMode = msg.driveMode as "auto" | "scroll" | undefined;
     lastScore = score;
-    engine
-      .play(score, { brightness: tuning?.brightness, reverb: tuning?.reverb })
+    const opts = { brightness: tuning?.brightness, reverb: tuning?.reverb };
+    const playPromise = driveMode === "scroll" ? engine.startScrollMode(score, opts) : engine.play(score, opts);
+    playPromise
       .then(() => sendResponse({ ok: true, state: stateOf() }))
       .catch((err: unknown) => {
         sendResponse({
@@ -48,6 +50,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         });
       });
     return true; // async response
+  }
+
+  if (msg.type === "WSE_OFFSCREEN_SCROLL") {
+    engine.setScrollFraction(msg.fraction as number);
+    return undefined; // synchronous, no response needed
   }
 
   if (msg.type === "WSE_OFFSCREEN_STOP") {

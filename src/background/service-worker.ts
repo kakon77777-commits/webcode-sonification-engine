@@ -54,12 +54,25 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         target: "wse-offscreen",
         score: msg.score,
         tuning: msg.tuning,
+        driveMode: msg.driveMode,
       });
       sendResponse(res ?? { ok: false, code: "AUDIO_BLOCKED" });
     })().catch((err: unknown) => {
       sendResponse({ ok: false, code: "AUDIO_BLOCKED", detail: String(err) });
     });
     return true;
+  }
+
+  if (msg.type === "WSE_SCROLL_POSITION") {
+    // Fire-and-forget relay from the content script's scroll-tracker to the
+    // offscreen engine. Only meaningful while Scroll Mode playback is active;
+    // the offscreen document silently ignores it otherwise.
+    void chrome.runtime
+      .sendMessage({ type: "WSE_OFFSCREEN_SCROLL", target: "wse-offscreen", fraction: msg.fraction })
+      .catch(() => {
+        // No offscreen document (nothing playing) — nothing to do.
+      });
+    return undefined;
   }
 
   if (msg.type === "WSE_STOP") {

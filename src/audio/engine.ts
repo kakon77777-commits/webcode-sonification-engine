@@ -1,5 +1,6 @@
 import type { Score } from "../shared/types.js";
 import { LookaheadScheduler } from "./scheduler.js";
+import { ScrollScheduler } from "./scroll-scheduler.js";
 import { playNote } from "./instruments.js";
 import { buildMasterGraph } from "./graph.js";
 
@@ -25,6 +26,7 @@ export interface PlayOptions {
 export class WseAudioEngine {
   private ctx: AudioContext | null = null;
   private scheduler: LookaheadScheduler | null = null;
+  private scrollScheduler: ScrollScheduler | null = null;
   private master: GainNode | null = null;
   private currentScore: Score | null = null;
   private onEnded: (() => void) | null = null;
@@ -61,9 +63,46 @@ export class WseAudioEngine {
     scheduler.start(ctx.currentTime + 0.15);
   }
 
+  /**
+   * Scroll Mode (§45, "Scrolling Page = Vertical Score"): builds the audio
+   * graph but does not auto-advance. Drive it with setScrollFraction() as
+   * the analyzed page scrolls — the score's own timeline never runs on a
+   * real-time clock in this mode.
+   */
+  async startScrollMode(score: Score, opts: PlayOptions = {}): Promise<void> {
+    await this.stop();
+    const ctx = new AudioContext();
+    this.ctx = ctx;
+    this.onEnded = opts.onEnded ?? null;
+
+    const { master, dest } = buildMasterGraph(ctx, {
+      brightness: opts.brightness,
+      reverb: opts.reverb,
+      seed: score.fingerprint.seed,
+    });
+    this.master = master;
+
+    if (ctx.state === "suspended") {
+      await ctx.resume();
+    }
+
+    this.currentScore = score;
+    this.scrollScheduler = new ScrollScheduler(score.events, (ev) =>
+      playNote(ctx, dest, ev, ctx.currentTime + 0.01)
+    );
+  }
+
+  /** Drive Scroll Mode. fraction is the page's scroll position in [0, 1]. */
+  setScrollFraction(fraction: number): void {
+    if (!this.scrollScheduler || !this.currentScore) return;
+    const clamped = Math.max(0, Math.min(1, fraction));
+    this.scrollScheduler.setTime(clamped * this.currentScore.profile.lengthSec);
+  }
+
   async stop(): Promise<void> {
     this.scheduler?.stop();
     this.scheduler = null;
+    this.scrollScheduler = null;
     this.currentScore = null;
     const ctx = this.ctx;
     const master = this.master;
@@ -84,6 +123,9 @@ export class WseAudioEngine {
   }
 
   getState(): EngineState {
+    if (this.scrollScheduler) {
+      return { playing: this.ctx !== null, position: this.scrollScheduler.position() };
+    }
     if (!this.ctx || !this.scheduler) return { playing: false, position: 0 };
     return { playing: true, position: this.scheduler.position() };
   }

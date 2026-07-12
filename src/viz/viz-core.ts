@@ -1,4 +1,5 @@
 import type { ElementToken, NoteEvent, NoteLayer, Score } from "../shared/types.js";
+import { lowerBound } from "../audio/scroll-scheduler.js";
 
 /**
  * Visualizer core (v0.3): shows the process of code becoming music.
@@ -126,6 +127,7 @@ export function mountViz(opts: VizOptions): VizHandles {
 
   const ctx2d = canvas.getContext("2d")!;
   let nextIdx = 0;
+  let lastPos = 0;
   let raf = 0;
   let running = false;
   /** onset timestamps (score seconds) for glow decay, per event index. */
@@ -237,14 +239,24 @@ export function mountViz(opts: VizOptions): VizHandles {
     ctx2d.stroke();
   }
 
+  // Position usually only advances (Auto Mode's real-time clock), but Scroll
+  // Mode can rewind — scrolling back must not "un-light" anything already
+  // played, but scrolling forward past those notes again should relight them.
+  // Reuses the exact same lowerBound the audio ScrollScheduler rewinds with,
+  // so what you see and what you hear always agree on "what's next".
   function frame(): void {
     if (!running) return;
     const pos = getPosition();
-    while (nextIdx < events.length && events[nextIdx].time <= pos) {
-      fired.add(nextIdx);
-      lightToken(nextIdx, events[nextIdx].layer);
-      nextIdx++;
+    if (pos > lastPos) {
+      while (nextIdx < events.length && events[nextIdx].time <= pos) {
+        fired.add(nextIdx);
+        lightToken(nextIdx, events[nextIdx].layer);
+        nextIdx++;
+      }
+    } else if (pos < lastPos) {
+      nextIdx = lowerBound(events, pos);
     }
+    lastPos = pos;
     drawRoll(pos);
     if (!isPlaying() && nextIdx >= events.length) {
       running = false;
@@ -265,6 +277,7 @@ export function mountViz(opts: VizOptions): VizHandles {
     },
     reset(): void {
       nextIdx = 0;
+      lastPos = 0;
       fired.clear();
       for (const handle of litTimeouts) clearTimeout(handle);
       litTimeouts.length = 0;

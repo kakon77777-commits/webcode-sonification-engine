@@ -9,6 +9,9 @@ export type WseErrorCode =
   | "PAGE_TOO_LARGE"
   | "UNSUPPORTED_PAGE";
 
+/** "auto" = real-time clock (default). "scroll" = viewport as playhead (§45). */
+export type DriveMode = "auto" | "scroll";
+
 /** Content script → popup. */
 export interface FeaturesMessage {
   type: "WSE_FEATURES";
@@ -25,6 +28,7 @@ export interface PlayMessage {
   type: "WSE_PLAY";
   score: Score;
   tuning?: TuningOptions;
+  driveMode?: DriveMode;
 }
 export interface StopMessage {
   type: "WSE_STOP";
@@ -33,12 +37,23 @@ export interface GetStateMessage {
   type: "WSE_GET_STATE";
 }
 
+/** Content script (scroll-tracker) → service worker → offscreen document. */
+export interface ScrollPositionMessage {
+  type: "WSE_SCROLL_POSITION";
+  fraction: number;
+}
+/** Popup/service worker → content script (scroll-tracker): detach and clean up. */
+export interface ScrollStopMessage {
+  type: "WSE_SCROLL_STOP";
+}
+
 /** Service worker → offscreen document. */
 export interface OffscreenPlayMessage {
   type: "WSE_OFFSCREEN_PLAY";
   target: "wse-offscreen";
   score: Score;
   tuning?: TuningOptions;
+  driveMode?: DriveMode;
 }
 export interface OffscreenStopMessage {
   type: "WSE_OFFSCREEN_STOP";
@@ -47,6 +62,11 @@ export interface OffscreenStopMessage {
 export interface OffscreenGetStateMessage {
   type: "WSE_OFFSCREEN_GET_STATE";
   target: "wse-offscreen";
+}
+export interface OffscreenScrollMessage {
+  type: "WSE_OFFSCREEN_SCROLL";
+  target: "wse-offscreen";
+  fraction: number;
 }
 
 export interface PlaybackState {
@@ -69,6 +89,9 @@ export type WseMessage =
   | PlayMessage
   | StopMessage
   | GetStateMessage
+  | ScrollPositionMessage
+  | ScrollStopMessage
   | OffscreenPlayMessage
   | OffscreenStopMessage
-  | OffscreenGetStateMessage;
+  | OffscreenGetStateMessage
+  | OffscreenScrollMessage;

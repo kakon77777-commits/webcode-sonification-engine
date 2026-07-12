@@ -4,6 +4,7 @@ import { computeFingerprint } from "../src/mapping/fingerprint.js";
 import { generateScore } from "../src/mapping/default-map.js";
 import { WseAudioEngine } from "../src/audio/engine.js";
 import { exportScoreAsWav } from "../src/audio/export-wav.js";
+import { scrollFraction } from "../src/audio/scroll-scheduler.js";
 import { LAYER_COLORS, LAYER_LABELS, mountViz, type VizHandles } from "../src/viz/viz-core.js";
 
 /**
@@ -54,6 +55,28 @@ function analyze() {
 }
 
 let viz: VizHandles | null = null;
+let scrollListenerAttached = false;
+
+function currentScrollFraction(): number {
+  const doc = document.documentElement;
+  return scrollFraction(window.scrollY, doc.scrollHeight, doc.clientHeight);
+}
+
+function attachScrollListener(): void {
+  if (scrollListenerAttached) return;
+  scrollListenerAttached = true;
+  window.addEventListener("scroll", onDemoScroll, { passive: true });
+}
+
+function detachScrollListener(): void {
+  if (!scrollListenerAttached) return;
+  scrollListenerAttached = false;
+  window.removeEventListener("scroll", onDemoScroll);
+}
+
+function onDemoScroll(): void {
+  engine.setScrollFraction(currentScrollFraction());
+}
 
 function renderVizLegend(): void {
   const legend = $("viz-legend");
@@ -79,13 +102,21 @@ async function play() {
     eventCount: score.events.length,
   };
   const tuning = currentTuning();
-  await engine.play(score, {
-    brightness: tuning.brightness,
-    reverb: tuning.reverb,
-    onEnded: () => {
-      out.textContent = "finished";
-    },
-  });
+  const scrollMode = ($("playback") as HTMLSelectElement).value === "scroll";
+  detachScrollListener();
+  if (scrollMode) {
+    await engine.startScrollMode(score, { brightness: tuning.brightness, reverb: tuning.reverb });
+    attachScrollListener();
+    engine.setScrollFraction(currentScrollFraction()); // sync to wherever the user already is
+  } else {
+    await engine.play(score, {
+      brightness: tuning.brightness,
+      reverb: tuning.reverb,
+      onEnded: () => {
+        out.textContent = "finished";
+      },
+    });
+  }
 
   // Watch the code become music: same viz core as the extension's visualizer tab.
   $("viz").classList.add("on");
@@ -106,7 +137,8 @@ async function play() {
   out.textContent =
     `${score.profile.keyName} · ${score.profile.bpm} BPM · ${score.profile.lengthSec}s · ` +
     `${score.events.length} notes · ${score.profile.character}-led · #${fingerprint.hash}` +
-    (variation > 0 ? ` · var ${variation}` : "");
+    (variation > 0 ? ` · var ${variation}` : "") +
+    (scrollMode ? " · scroll to play" : "");
 }
 
 $("play").addEventListener("click", () => {
@@ -119,6 +151,7 @@ $("regen").addEventListener("click", () => {
 });
 $("stop").addEventListener("click", () => {
   void engine.stop();
+  detachScrollListener();
   viz?.stop();
   out.textContent = "stopped";
 });

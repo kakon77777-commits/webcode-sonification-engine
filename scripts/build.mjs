@@ -24,6 +24,7 @@ await build({
   entryPoints: {
     background: join(root, "src/background/service-worker.ts"),
     "content-extractor": join(root, "src/content/extractor.ts"),
+    "scroll-tracker": join(root, "src/content/scroll-tracker.ts"),
     popup: join(root, "src/ui/popup.ts"),
     offscreen: join(root, "src/offscreen/offscreen.ts"),
     visualizer: join(root, "src/viz/visualizer.ts"),

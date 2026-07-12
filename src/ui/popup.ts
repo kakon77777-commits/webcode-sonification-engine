@@ -1,6 +1,6 @@
 import type { ModeName, PageFeatures, Score, StyleName, TuningOptions } from "../shared/types.js";
 import { DEFAULT_TUNING } from "../shared/types.js";
-import type { PlaybackState, WseErrorCode } from "../shared/messages.js";
+import type { DriveMode, PlaybackState, WseErrorCode } from "../shared/messages.js";
 import { computeFingerprint } from "../mapping/fingerprint.js";
 import { generateScore } from "../mapping/default-map.js";
 import { exportScoreAsWav } from "../audio/export-wav.js";
@@ -20,6 +20,7 @@ const regenBtn = $<HTMLButtonElement>("regen");
 const exportBtn = $<HTMLButtonElement>("export-wav");
 const modeSel = $<HTMLSelectElement>("mode");
 const styleSel = $<HTMLSelectElement>("style");
+const playbackSel = $<HTMLSelectElement>("playback");
 const infoBox = $<HTMLDivElement>("info");
 const explainBox = $<HTMLDetailsElement>("explain-box");
 const explainList = $<HTMLUListElement>("explain");
@@ -28,6 +29,7 @@ const statusBox = $<HTMLDivElement>("status");
 
 let lastFeatures: PageFeatures | null = null;
 let lastScore: Score | null = null;
+let lastTabId: number | null = null;
 let variation = 0;
 
 /** Tuning sliders — part of Θ, persisted, fully deterministic. */
@@ -101,6 +103,7 @@ function renderScore(score: Score, nodes: number): void {
 async function extractFromActiveTab(): Promise<PageFeatures> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) throw Object.assign(new Error("no tab"), { wseCode: "UNSUPPORTED_PAGE" });
+  lastTabId = tab.id;
 
   const featuresPromise = new Promise<PageFeatures>((resolve, reject) => {
     const timeout = setTimeout(() => {
@@ -145,17 +148,28 @@ function buildScore(features: PageFeatures): Score {
 }
 
 async function playScore(score: Score): Promise<void> {
+  const driveMode = playbackSel.value as DriveMode;
   const res = (await chrome.runtime.sendMessage({
     type: "WSE_PLAY",
     score,
     tuning: currentTuning(),
+    driveMode,
   })) as { ok: boolean; code?: WseErrorCode; detail?: string } | undefined;
   if (!res?.ok) {
     showError(res?.code ?? "AUDIO_BLOCKED", res?.detail);
     return;
   }
   stopBtn.disabled = false;
-  setStatus(`Playing · ${score.profile.style} · ${score.profile.keyName} · ${score.profile.bpm} BPM`);
+  if (driveMode === "scroll" && lastTabId !== null) {
+    try {
+      await chrome.scripting.executeScript({ target: { tabId: lastTabId }, files: ["scroll-tracker.js"] });
+    } catch {
+      // Page doesn't allow injection (e.g. a chrome:// tab) — Scroll Mode just won't advance.
+    }
+    setStatus(`Scroll to play · ${score.profile.style} · ${score.profile.keyName} · ${score.profile.bpm} BPM`);
+  } else {
+    setStatus(`Playing · ${score.profile.style} · ${score.profile.keyName} · ${score.profile.bpm} BPM`);
+  }
 }
 
 async function analyzeAndPlay(): Promise<void> {
@@ -195,6 +209,11 @@ async function analyzeAndVisualize(): Promise<void> {
     lastScore = score;
     // One audio source at a time: the visualizer tab plays, offscreen stops.
     await chrome.runtime.sendMessage({ type: "WSE_STOP" });
+    if (lastTabId !== null) {
+      chrome.tabs.sendMessage(lastTabId, { type: "WSE_SCROLL_STOP" }).catch(() => {
+        // No scroll-tracker listening on this tab — nothing to detach.
+      });
+    }
     await chrome.storage.local.set({
       wseVizPayload: {
         score,
@@ -216,6 +235,11 @@ async function analyzeAndVisualize(): Promise<void> {
 
 async function stop(): Promise<void> {
   await chrome.runtime.sendMessage({ type: "WSE_STOP" });
+  if (lastTabId !== null) {
+    chrome.tabs.sendMessage(lastTabId, { type: "WSE_SCROLL_STOP" }).catch(() => {
+      // No scroll-tracker listening on this tab — nothing to detach.
+    });
+  }
   stopBtn.disabled = true;
   setStatus("Stopped.");
 }
@@ -254,6 +278,7 @@ async function saveSettings(): Promise<void> {
   await chrome.storage.local.set({
     style: styleSel.value,
     mode: modeSel.value,
+    playback: playbackSel.value,
     tuning: currentTuning(),
   });
 }
@@ -267,13 +292,15 @@ function applyTuning(t: TuningOptions): void {
 }
 
 async function init(): Promise<void> {
-  const saved = (await chrome.storage.local.get(["style", "mode", "tuning"])) as {
+  const saved = (await chrome.storage.local.get(["style", "mode", "playback", "tuning"])) as {
     style?: string;
     mode?: string;
+    playback?: string;
     tuning?: TuningOptions;
   };
   if (saved.style) styleSel.value = saved.style;
   if (saved.mode) modeSel.value = saved.mode;
+  if (saved.playback) playbackSel.value = saved.playback;
   applyTuning(saved.tuning ?? DEFAULT_TUNING);
 
   // Reflect ongoing playback if the popup was reopened.
@@ -298,6 +325,7 @@ regenBtn.addEventListener("click", () => void regenerate());
 exportBtn.addEventListener("click", () => void exportWav());
 styleSel.addEventListener("change", () => void saveSettings());
 modeSel.addEventListener("change", () => void saveSettings());
+playbackSel.addEventListener("change", () => void saveSettings());
 for (const el of Object.values(sliders)) {
   el.addEventListener("input", () => renderSliderValues());
   el.addEventListener("change", () => void saveSettings());
