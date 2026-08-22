@@ -26,6 +26,7 @@ createServer(async (req, res) => {
       return;
     }
     let rel = urlPath === "/" || urlPath === "/demo" || urlPath === "/demo/" ? "/demo/demo.html" : urlPath;
+    if (urlPath === "/demo.js") rel = "/demo/demo.js";
     if (urlPath === "/quality.html") rel = "/demo/quality.html";
     if (urlPath === "/quality.js") rel = "/demo/quality.js";
     const file = normalize(join(root, rel));

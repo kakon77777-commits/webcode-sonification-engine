@@ -115,4 +115,38 @@ describe("downloadEncodedExport", () => {
     expect(globalThis.Blob).toBe(originalBlob);
     expect(globalThis.URL).toBe(originalURL);
   });
+
+  it("removes the temporary anchor when click throws", () => {
+    vi.useFakeTimers();
+    class FakeBlob {
+      constructor(_parts: BlobPart[], _options?: BlobPropertyBag) {}
+    }
+    const anchor = {
+      href: "",
+      download: "",
+      click: vi.fn(() => {
+        throw new Error("click blocked");
+      }),
+      remove: vi.fn(),
+    } as unknown as HTMLAnchorElement;
+    const documentRef = {
+      createElement: vi.fn(() => anchor),
+      body: { appendChild: vi.fn() },
+    } as unknown as Document;
+    vi.stubGlobal("Blob", FakeBlob);
+    vi.stubGlobal("URL", {
+      createObjectURL: vi.fn(() => "blob:throwing-export"),
+      revokeObjectURL: vi.fn(),
+    });
+
+    expect(() => downloadEncodedExport({
+      format: "wav",
+      extension: "wav",
+      mimeType: "audio/wav",
+      filename: "throw.wav",
+      bytes: new ArrayBuffer(1),
+    }, documentRef)).toThrow("click blocked");
+    expect(anchor.remove).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(10_000);
+  });
 });

@@ -8,14 +8,14 @@ export function downloadEncodedExport(artifact: EncodedExport, documentRef?: Doc
 
   const blob = new Blob([artifact.bytes], { type: artifact.mimeType });
   const url = URL.createObjectURL(blob);
+  const anchor = doc.createElement("a");
   try {
-    const anchor = doc.createElement("a");
     anchor.href = url;
     anchor.download = artifact.filename;
     doc.body.appendChild(anchor);
     anchor.click();
-    anchor.remove();
   } finally {
+    anchor.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
   }
 }

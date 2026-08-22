@@ -132,7 +132,7 @@ The popup answers *“Why does this page sound like this?”* — e.g. *“high 
 ## Development
 
 ```
-npm test          # 104 tests: determinism, scale guardrail, density caps, privacy,
+npm test          # 124 tests: determinism, scale guardrail, density caps, privacy,
                    # 4-fixture identity, scroll scheduler, live-mode mapping, WAV encoder,
                    # musical arrangement, layer/score/render metrics, instrument-table coverage
 npm run typecheck
@@ -182,7 +182,7 @@ WSE deliberately claims a narrower, different thing:
 
 ## Changelog
 
-- **v0.4.1** — Sound quality pass: filter envelopes on every sustained voice (pad, lowpad, strings, piano, pluck, lead, epiano), a redesigned procedural reverb (pre-delay + early reflections + darkening tail instead of flat noise), and a master-bus warmth/air EQ + soft-knee saturator ahead of the compressor. Five new instruments — clarinet, marimba, 箏/koto, subbass, choir — wired into the orchestration palette (23 instruments total). 104 tests, plus a browser-run `/quality.html` voice harness that verifies all 23 instruments render with real energy, zero clipping, and zero non-finite samples.
+- **v0.4.1** — Sound quality pass: filter envelopes on every sustained voice (pad, lowpad, strings, piano, pluck, lead, epiano), a redesigned procedural reverb (pre-delay + early reflections + darkening tail instead of flat noise), and a master-bus warmth/air EQ + soft-knee saturator ahead of the compressor. Five new instruments — clarinet, marimba, 箏/koto, subbass, choir — wired into the orchestration palette (23 instruments total). 124 tests, plus a browser-run `/quality.html` voice harness that verifies all 23 instruments render with real energy, zero clipping, and zero non-finite samples.
 - **v0.4.0** — Scroll Mode (§45, viewport as playhead, with rewind-safe scrubbing) and Mutation Mode (§29–31, live DOM performance with an ambient bed + rate-limited reactive layer), both browser-verified with a live-DOM-mutation self-feedback bug found and fixed along the way; WAV export (offline render through the exact live-playback synthesis graph); deterministic-audio fix (reverb impulse response and percussion/breath noise were previously `Math.random()` — now seeded from the score's fingerprint, so replaying or re-exporting the same score reproduces the same "room"); 72 tests
 - **v0.3.0** — Visualizer: full-tab "watch the code become music" view (token stream + karaoke-style highlights + scrolling piano roll), note provenance layers, `data-wse-ignore` extraction opt-out, 41 tests
 - **v0.2.0** — cross-site differentiation overhaul: structure-driven orchestration (§17 "Orchestra by Web Architecture"), 7 scales, tag-entropy tempo spread, Euclidean rhythm signatures; new instruments 蕭/笛/guitar/太鼓; Eastern style; customize sliders (tempo/density/brightness/reverb); product site at wse.evemisstechnology.com
