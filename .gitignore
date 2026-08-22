@@ -3,5 +3,6 @@ dist/
 demo/demo.js
 scripts/.compare.mjs
 .claude/
+.worktrees/
 store/*.zip
 *.log
