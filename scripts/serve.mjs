@@ -20,7 +20,14 @@ const MIME = {
 createServer(async (req, res) => {
   try {
     const urlPath = decodeURIComponent(new URL(req.url, "http://x").pathname);
-    let rel = urlPath === "/" ? "/demo/demo.html" : urlPath;
+    if (urlPath === "/favicon.ico") {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+    let rel = urlPath === "/" || urlPath === "/demo" || urlPath === "/demo/" ? "/demo/demo.html" : urlPath;
+    if (urlPath === "/quality.html") rel = "/demo/quality.html";
+    if (urlPath === "/quality.js") rel = "/demo/quality.js";
     const file = normalize(join(root, rel));
     if (!file.startsWith(root)) throw new Error("path escape");
     const data = await readFile(file);

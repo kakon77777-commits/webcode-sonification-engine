@@ -1,6 +1,8 @@
 import type {
   GenerateOptions,
   InstrumentName,
+  ModeName,
+  MusicProfile,
   NoteEvent,
   PageFeatures,
   PageFingerprint,
@@ -16,6 +18,7 @@ import { deriveProfile } from "./profile.js";
 import { chooseOrchestration, euclid } from "./orchestration.js";
 import { clampMidi, degreeToMidi, quantizePitch, quantizeTime } from "./quantize.js";
 import { applyLimits } from "./limits.js";
+import { arrangeMusically } from "./arrangement.js";
 
 /**
  * Θ_default — the v0.2 mapping (§16, §17, §47, §69).
@@ -196,6 +199,15 @@ function makeMotif(rng: Rng, phraseLen: number, maxDeg: number): Motif {
 
 function round6(x: number): number {
   return Math.round(x * 1e6) / 1e6;
+}
+
+function finalizeScoreEvents(
+  events: NoteEvent[],
+  profile: MusicProfile,
+  mode: ModeName
+): NoteEvent[] {
+  const limited = applyLimits(events);
+  return mode === "musical" ? applyLimits(arrangeMusically(limited, profile)) : limited;
 }
 
 export function generateScore(
@@ -524,7 +536,11 @@ export function generateScore(
       };
     });
 
-  processed = applyLimits(processed);
+  // Musical mode preserves the same page-derived identity, then arranges its
+  // mapped material into a clearer sectional performance. Hybrid and
+  // Analytical intentionally bypass this pass for backwards-compatible sound
+  // signatures and structural audibility.
+  processed = finalizeScoreEvents(processed, profile, mode);
 
   return {
     version: 1,

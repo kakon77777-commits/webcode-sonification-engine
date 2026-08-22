@@ -13,9 +13,9 @@ import {
 import { mulberry32, type Rng } from "../mapping/deterministic-seed.js";
 
 /**
- * Audio engine: master chain (gain → compressor → destination) plus a shared
- * procedural reverb. A fresh AudioContext is created per playback and torn
- * down on stop — simple and leak-free.
+ * Audio engine: shared master chain, structural layer buses and procedural
+ * reverb. A fresh AudioContext is created per playback and torn down on stop
+ * — simple and leak-free.
  */
 
 export interface EngineState {

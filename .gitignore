@@ -1,6 +1,7 @@
 node_modules/
 dist/
 demo/demo.js
+demo/quality.js
 scripts/.compare.mjs
 .claude/
 .worktrees/

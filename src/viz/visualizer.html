@@ -15,7 +15,15 @@
       <div class="buttons">
         <button id="replay">↻ Replay</button>
         <button id="stopBtn">■ Stop</button>
-        <button id="exportWav">⬇ Export WAV</button>
+        <label class="export-format">
+          <span>Format</span>
+          <select id="export-format">
+            <option value="wav">WAV</option>
+            <option value="midi">MIDI</option>
+          </select>
+        </label>
+        <button id="export" disabled>Export</button>
+        <p id="export-status" role="status" aria-live="polite"></p>
       </div>
     </header>
 

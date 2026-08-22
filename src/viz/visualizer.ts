@@ -1,6 +1,8 @@
 import type { VizPayload } from "../shared/types.js";
 import { WseAudioEngine } from "../audio/engine.js";
-import { exportScoreAsWav } from "../audio/export-wav.js";
+import { downloadEncodedExport } from "../audio/export-download.js";
+import { encodeScore } from "../audio/export-registry.js";
+import type { ExportFormat, ExportOptions } from "../audio/export-types.js";
 import { LAYER_COLORS, LAYER_LABELS, mountViz, type VizHandles } from "./viz-core.js";
 
 /**
@@ -15,6 +17,13 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 const engine = new WseAudioEngine();
 let viz: VizHandles | null = null;
 let payload: VizPayload | null = null;
+const exportBtn = $<HTMLButtonElement>("export");
+const exportFormat = $<HTMLSelectElement>("export-format");
+const exportStatus = $<HTMLParagraphElement>("export-status");
+
+function renderOptions(p: VizPayload): ExportOptions {
+  return { brightness: p.tuning.brightness, reverb: p.tuning.reverb };
+}
 
 function renderLegend(): void {
   const legend = $<HTMLDivElement>("legend");
@@ -77,6 +86,7 @@ async function init(): Promise<void> {
     return;
   }
   renderMeta(payload);
+  exportBtn.disabled = false;
   viz = mountViz({
     tokensEl: $("tokens"),
     canvas: $("roll") as unknown as HTMLCanvasElement,
@@ -101,20 +111,20 @@ $("overlay-start").addEventListener("click", async () => {
   await engine.stop();
   await startPlayback(payload);
 });
-$<HTMLButtonElement>("exportWav").addEventListener("click", async () => {
+$<HTMLButtonElement>("export").addEventListener("click", async () => {
   if (!payload) return;
-  const btn = $<HTMLButtonElement>("exportWav");
-  const original = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = "Rendering…";
+  const format = exportFormat.value as ExportFormat;
+  const label = format === "wav" ? "WAV" : "MIDI";
+  exportBtn.disabled = true;
+  exportStatus.textContent = format === "wav" ? "Rendering WAV…" : "Encoding MIDI…";
   try {
-    await exportScoreAsWav(payload.score, {
-      brightness: payload.tuning.brightness,
-      reverb: payload.tuning.reverb,
-    });
+    const artifact = await encodeScore(payload.score, format, renderOptions(payload));
+    downloadEncodedExport(artifact);
+    exportStatus.textContent = `${label} downloaded.`;
+  } catch (err) {
+    exportStatus.textContent = `Export failed: ${err instanceof Error ? err.message : String(err)}`;
   } finally {
-    btn.disabled = false;
-    btn.textContent = original;
+    exportBtn.disabled = payload === null;
   }
 });
 

@@ -93,7 +93,15 @@
 
       <details id="export-box" class="hidden">
         <summary>Export</summary>
-        <button id="export-wav" class="linkish-btn" disabled>⬇ Export WAV</button>
+        <label class="export-format">
+          <span>Format</span>
+          <select id="export-format">
+            <option value="wav">WAV</option>
+            <option value="midi">MIDI</option>
+          </select>
+        </label>
+        <button id="export" class="linkish-btn" disabled>Export</button>
+        <p id="export-status" role="status" aria-live="polite"></p>
       </details>
 
       <div id="error" class="error hidden"></div>

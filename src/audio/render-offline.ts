@@ -7,7 +7,8 @@ import { playNote } from "./instruments.js";
  * through the exact same voice graph as live playback, but on an
  * OfflineAudioContext, which renders far faster than real time. Reusing
  * buildMasterGraph/playNote guarantees the exported WAV matches what you
- * actually heard — no separate "export path" to drift out of sync.
+ * actually heard, including structural layer-bus routing — no separate
+ * "export path" to drift out of sync.
  *
  * Note on determinism: the reverb impulse response and percussion/breath
  * noise textures are seeded from the score's fingerprint (see graph.ts,

@@ -83,7 +83,12 @@ Never the URL alone — if a site's structure changes, its music changes too. **
 
 ### Export
 
-**Export WAV** renders the current score offline (through the identical synthesis graph you just heard — not a separate export path) and downloads a standard 16-bit PCM `.wav` file, entirely client-side. Available in the popup, the visualizer tab, and the web demo.
+**Export** downloads the current score entirely client-side. The standalone web demo's WAV/MIDI export path is browser-verified; the popup and visualizer tab expose the same format controls through the shared export contract. The format selector defaults to **WAV**:
+
+- **WAV** renders the score offline through the identical synthesis graph you just heard — not a separate export path — and downloads a standard 16-bit PCM `.wav` file.
+- **MIDI** encodes the same deterministic score as a `.mid` file with stable layer tracks: `WSE`, `WSE pad`, `WSE bass`, `WSE melody`, `WSE arp`, `WSE bell`, and `WSE perc`.
+
+Both formats use deterministic `wse-<fingerprint>-<style>` filenames, and the export status text reports the completed WAV or MIDI download. Additional export formats, custom mapping profiles, and sibling-site links remain separate future plans.
 
 ---
 
@@ -100,7 +105,7 @@ Permissions: `activeTab`, `scripting`, `storage`, `offscreen` — analysis runs 
 
 ```
 node scripts/serve.mjs
-# → http://localhost:8735/  (demo page running the exact same pipeline in-page)
+# → http://localhost:8735/demo/  (demo page running the exact same pipeline in-page)
 ```
 
 ## Privacy by default
@@ -127,11 +132,11 @@ The popup answers *“Why does this page sound like this?”* — e.g. *“high 
 ## Development
 
 ```
-npm test          # 85 tests: determinism, scale guardrail, density caps, privacy,
+npm test          # 104 tests: determinism, scale guardrail, density caps, privacy,
                    # 4-fixture identity, scroll scheduler, live-mode mapping, WAV encoder,
-                   # reverb IR shape, master-bus saturation curve, instrument-table coverage
+                   # musical arrangement, layer/score/render metrics, instrument-table coverage
 npm run typecheck
-npm run build     # → dist/ (extension) + demo/demo.js
+npm run build     # → dist/ (extension) + demo/demo.js + demo/quality.js
 ```
 
 Integration fixtures (`tests/fixtures/`): a blog, a dashboard, an e-commerce grid and a docs site — the suite asserts **M₁ ≠ M₂ ≠ M₃ ≠ M₄** and that the same fixture always renders the identical score.
@@ -177,7 +182,7 @@ WSE deliberately claims a narrower, different thing:
 
 ## Changelog
 
-- **v0.4.1** — Sound quality pass: filter envelopes on every sustained voice (pad, lowpad, strings, piano, pluck, lead, epiano), a redesigned procedural reverb (pre-delay + early reflections + darkening tail instead of flat noise), and a master-bus warmth/air EQ + soft-knee saturator ahead of the compressor. Five new instruments — clarinet, marimba, 箏/koto, subbass, choir — wired into the orchestration palette (23 instruments total). 85 tests, including offline-WAV-render verification in-browser for every new voice (real energy, zero clipping).
+- **v0.4.1** — Sound quality pass: filter envelopes on every sustained voice (pad, lowpad, strings, piano, pluck, lead, epiano), a redesigned procedural reverb (pre-delay + early reflections + darkening tail instead of flat noise), and a master-bus warmth/air EQ + soft-knee saturator ahead of the compressor. Five new instruments — clarinet, marimba, 箏/koto, subbass, choir — wired into the orchestration palette (23 instruments total). 104 tests, plus a browser-run `/quality.html` voice harness that verifies all 23 instruments render with real energy, zero clipping, and zero non-finite samples.
 - **v0.4.0** — Scroll Mode (§45, viewport as playhead, with rewind-safe scrubbing) and Mutation Mode (§29–31, live DOM performance with an ambient bed + rate-limited reactive layer), both browser-verified with a live-DOM-mutation self-feedback bug found and fixed along the way; WAV export (offline render through the exact live-playback synthesis graph); deterministic-audio fix (reverb impulse response and percussion/breath noise were previously `Math.random()` — now seeded from the score's fingerprint, so replaying or re-exporting the same score reproduces the same "room"); 72 tests
 - **v0.3.0** — Visualizer: full-tab "watch the code become music" view (token stream + karaoke-style highlights + scrolling piano roll), note provenance layers, `data-wse-ignore` extraction opt-out, 41 tests
 - **v0.2.0** — cross-site differentiation overhaul: structure-driven orchestration (§17 "Orchestra by Web Architecture"), 7 scales, tag-entropy tempo spread, Euclidean rhythm signatures; new instruments 蕭/笛/guitar/太鼓; Eastern style; customize sliders (tempo/density/brightness/reverb); product site at wse.evemisstechnology.com
@@ -185,8 +190,7 @@ WSE deliberately claims a narrower, different thing:
 
 ## Roadmap
 
-- **v0.5** — custom mapping profiles, MIDI export
-- **v1.0** — Firefox, public mapping SDK, research dataset
+Future work is tracked in separate plans after verification. Export formats beyond WAV/MIDI, custom profile workflows, and sister-site links remain separate future plans.
 
 ## Authorship
 

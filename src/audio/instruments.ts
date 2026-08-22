@@ -1,5 +1,6 @@
 import type { InstrumentName, NoteEvent } from "../shared/types.js";
 import { mulberry32 } from "../mapping/deterministic-seed.js";
+import type { LayerBusMap } from "./layer-mix.js";
 
 /**
  * v0.1 synth voices (§ Task 9): oscillators + gain + filter + simple envelopes.
@@ -10,6 +11,7 @@ import { mulberry32 } from "../mapping/deterministic-seed.js";
 export interface VoiceDestinations {
   dry: AudioNode;
   reverb: AudioNode;
+  layerBuses?: LayerBusMap;
   /** 0…1 timbre brightness from the user slider (0.5 = neutral). */
   brightness?: number;
 }
@@ -88,7 +90,7 @@ function makeOutput(ctx: BaseAudioContext, dest: VoiceDestinations, ev: NoteEven
   const panner = ctx.createStereoPanner();
   panner.pan.value = ev.pan;
   env.connect(panner);
-  panner.connect(dest.dry);
+  panner.connect(dest.layerBuses?.[ev.layer] ?? dest.dry);
   const send = ctx.createGain();
   send.gain.value = REVERB_SEND[ev.instrument] ?? 0.2;
   panner.connect(send);
@@ -652,6 +654,10 @@ const VOICES: Record<InstrumentName, VoiceBuilder> = {
     return { out: env, stopAt };
   },
 };
+
+export const INSTRUMENT_CATALOG: readonly InstrumentName[] = Object.freeze(
+  Object.keys(VOICES) as InstrumentName[]
+);
 
 /** Schedule one NoteEvent at absolute AudioContext time `when`. */
 export function playNote(

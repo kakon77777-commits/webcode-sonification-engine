@@ -35,7 +35,10 @@ await build({
 
 await build({
   ...common,
-  entryPoints: { demo: join(root, "demo/demo.ts") },
+  entryPoints: {
+    demo: join(root, "demo/demo.ts"),
+    quality: join(root, "demo/quality.ts"),
+  },
   outdir: join(root, "demo"),
   allowOverwrite: true,
 });

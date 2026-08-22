@@ -3,7 +3,9 @@ import { DEFAULT_TUNING } from "../shared/types.js";
 import type { DriveMode, PlaybackState, WseErrorCode } from "../shared/messages.js";
 import { computeFingerprint } from "../mapping/fingerprint.js";
 import { generateScore } from "../mapping/default-map.js";
-import { exportScoreAsWav } from "../audio/export-wav.js";
+import { downloadEncodedExport } from "../audio/export-download.js";
+import { encodeScore } from "../audio/export-registry.js";
+import type { ExportFormat, ExportOptions } from "../audio/export-types.js";
 
 /**
  * Popup: Analyze & Play / Stop / Regenerate (§49).
@@ -17,7 +19,9 @@ const analyzeBtn = $<HTMLButtonElement>("analyze");
 const visualizeBtn = $<HTMLButtonElement>("visualize");
 const stopBtn = $<HTMLButtonElement>("stop");
 const regenBtn = $<HTMLButtonElement>("regen");
-const exportBtn = $<HTMLButtonElement>("export-wav");
+const exportBtn = $<HTMLButtonElement>("export");
+const exportFormat = $<HTMLSelectElement>("export-format");
+const exportStatus = $<HTMLParagraphElement>("export-status");
 const exportBox = $<HTMLDetailsElement>("export-box");
 const modeSel = $<HTMLSelectElement>("mode");
 const styleSel = $<HTMLSelectElement>("style");
@@ -48,6 +52,11 @@ function currentTuning(): TuningOptions {
     brightness: Number(sliders.bright.value) / 100,
     reverb: Number(sliders.reverb.value) / 100,
   };
+}
+
+function currentRenderOptions(): ExportOptions {
+  const tuning = currentTuning();
+  return { brightness: tuning.brightness, reverb: tuning.reverb };
 }
 
 function renderSliderValues(): void {
@@ -264,22 +273,23 @@ async function regenerate(): Promise<void> {
   await playScore(score);
 }
 
-/** Render the current score offline and download it as a WAV file (§52 Export). */
-async function exportWav(): Promise<void> {
+/** Encode the current score and trigger a local browser download (§52 Export). */
+async function exportCurrentScore(): Promise<void> {
   if (!lastScore) return;
   clearError();
   exportBtn.disabled = true;
-  const prevStatus = statusBox.textContent ?? "";
-  setStatus("Rendering WAV…");
+  const format = exportFormat.value as ExportFormat;
+  const label = format === "wav" ? "WAV" : "MIDI";
+  exportStatus.textContent = format === "wav" ? "Rendering WAV…" : "Encoding MIDI…";
   try {
-    const tuning = currentTuning();
-    await exportScoreAsWav(lastScore, { brightness: tuning.brightness, reverb: tuning.reverb });
-    setStatus("WAV downloaded.");
+    const artifact = await encodeScore(lastScore, format, currentRenderOptions());
+    downloadEncodedExport(artifact);
+    exportStatus.textContent = `${label} downloaded.`;
   } catch (err) {
     showError("AUDIO_BLOCKED", err instanceof Error ? err.message : String(err));
-    setStatus(prevStatus);
+    exportStatus.textContent = `Export failed: ${err instanceof Error ? err.message : String(err)}`;
   } finally {
-    exportBtn.disabled = false;
+    exportBtn.disabled = lastScore === null;
   }
 }
 
@@ -331,7 +341,7 @@ analyzeBtn.addEventListener("click", () => void analyzeAndPlay());
 visualizeBtn.addEventListener("click", () => void analyzeAndVisualize());
 stopBtn.addEventListener("click", () => void stop());
 regenBtn.addEventListener("click", () => void regenerate());
-exportBtn.addEventListener("click", () => void exportWav());
+exportBtn.addEventListener("click", () => void exportCurrentScore());
 styleSel.addEventListener("change", () => void saveSettings());
 modeSel.addEventListener("change", () => void saveSettings());
 playbackSel.addEventListener("change", () => void saveSettings());

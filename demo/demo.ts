@@ -3,7 +3,9 @@ import { extractPageFeatures } from "../src/content/extract.js";
 import { computeFingerprint } from "../src/mapping/fingerprint.js";
 import { generateScore } from "../src/mapping/default-map.js";
 import { WseAudioEngine } from "../src/audio/engine.js";
-import { exportScoreAsWav } from "../src/audio/export-wav.js";
+import { downloadEncodedExport } from "../src/audio/export-download.js";
+import { encodeScore } from "../src/audio/export-registry.js";
+import type { ExportFormat, ExportOptions } from "../src/audio/export-types.js";
 import { scrollFraction } from "../src/audio/scroll-scheduler.js";
 import type { MutationBatch } from "../src/mapping/live.js";
 import { layerForTag } from "../src/mapping/layer-tags.js";
@@ -31,6 +33,11 @@ function currentTuning(): TuningOptions {
     brightness: v("s-bright") / 100,
     reverb: v("s-reverb") / 100,
   };
+}
+
+function currentRenderOptions(): ExportOptions {
+  const tuning = currentTuning();
+  return { brightness: tuning.brightness, reverb: tuning.reverb };
 }
 
 function currentOptions(): {
@@ -228,7 +235,8 @@ async function play() {
     viz.start();
   }
 
-  ($("exportWav") as HTMLButtonElement).disabled = false;
+  ($("export") as HTMLButtonElement).disabled = false;
+  $("export-status").textContent = "";
   const modeSuffix = driveMode === "scroll" ? " · scroll to play" : driveMode === "live" ? " · live — change the page" : "";
   out.textContent =
     `${score.profile.keyName} · ${score.profile.bpm} BPM · ${score.profile.lengthSec}s · ` +
@@ -272,18 +280,22 @@ document.querySelectorAll<HTMLButtonElement>(".mutate-btn").forEach((btn, i) => 
     slots.appendChild(el);
   });
 });
-$("exportWav").addEventListener("click", async () => {
+$("export").addEventListener("click", async () => {
   if (!lastScore) return;
-  const btn = $("exportWav") as HTMLButtonElement;
-  const original = btn.textContent;
+  const btn = $("export") as HTMLButtonElement;
+  const status = $("export-status");
+  const format = ($("export-format") as HTMLSelectElement).value as ExportFormat;
+  const label = format === "wav" ? "WAV" : "MIDI";
   btn.disabled = true;
-  btn.textContent = "Rendering…";
+  status.textContent = format === "wav" ? "Rendering WAV…" : "Encoding MIDI…";
   try {
-    const tuning = currentTuning();
-    await exportScoreAsWav(lastScore, { brightness: tuning.brightness, reverb: tuning.reverb });
+    const artifact = await encodeScore(lastScore, format, currentRenderOptions());
+    downloadEncodedExport(artifact);
+    status.textContent = `${label} downloaded.`;
+  } catch (err) {
+    status.textContent = `Export failed: ${err instanceof Error ? err.message : String(err)}`;
   } finally {
-    btn.disabled = false;
-    btn.textContent = original;
+    btn.disabled = lastScore === null;
   }
 });
 

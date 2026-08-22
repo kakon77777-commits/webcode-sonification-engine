@@ -1,5 +1,6 @@
 import { setNoiseSeed, type VoiceDestinations } from "./instruments.js";
 import { dampedNoiseSamples } from "./impulse.js";
+import { createLayerBuses, type LayerBusMap } from "./layer-mix.js";
 
 /**
  * Shared master audio graph: master gain → compressor → destination, plus a
@@ -23,6 +24,7 @@ export interface MasterGraphOptions {
 
 export interface MasterGraph {
   master: GainNode;
+  layerBuses: LayerBusMap;
   dest: VoiceDestinations;
 }
 
@@ -108,6 +110,12 @@ export function buildMasterGraph(ctx: BaseAudioContext, opts: MasterGraphOptions
   reverb.connect(reverbReturn);
   reverbReturn.connect(master);
 
-  const dest: VoiceDestinations = { dry: master, reverb, brightness: opts.brightness ?? 0.5 };
-  return { master, dest };
+  const layerBuses = createLayerBuses(ctx, master);
+  const dest: VoiceDestinations = {
+    dry: master,
+    reverb,
+    layerBuses,
+    brightness: opts.brightness ?? 0.5,
+  };
+  return { master, layerBuses, dest };
 }
