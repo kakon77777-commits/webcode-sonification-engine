@@ -136,7 +136,22 @@ export interface TuningOptions {
   brightness: number;
   /** Reverb amount, 0…1 (0.5 = neutral). */
   reverb: number;
+  mix?: Partial<LayerMixTuning>;
 }
+
+export interface LayerMixTuning {
+  lowEnd: number;
+  pad: number;
+  melody: number;
+  rhythm: number;
+}
+
+export const DEFAULT_LAYER_MIX: LayerMixTuning = {
+  lowEnd: 0.72,
+  pad: 1,
+  melody: 1,
+  rhythm: 0.9,
+};
 
 export const DEFAULT_TUNING: TuningOptions = {
   tempoShift: 0,

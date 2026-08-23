@@ -1,4 +1,8 @@
-import type { NoteLayer } from "../shared/types.js";
+import type { LayerMixTuning, NoteLayer } from "../shared/types.js";
+import { DEFAULT_LAYER_MIX } from "../shared/types.js";
+
+export { DEFAULT_LAYER_MIX } from "../shared/types.js";
+export type { LayerMixTuning } from "../shared/types.js";
 
 export const LAYER_GAIN: Readonly<Record<NoteLayer, number>> = Object.freeze({
   pad: 0.82,
@@ -11,7 +15,25 @@ export const LAYER_GAIN: Readonly<Record<NoteLayer, number>> = Object.freeze({
 
 export type LayerBusMap = Readonly<Record<NoteLayer, GainNode>>;
 
-export function createLayerBuses(ctx: BaseAudioContext, target: AudioNode): LayerBusMap {
+function clampMixValue(value: number): number {
+  return Math.min(1.25, Math.max(0, value));
+}
+
+export function resolveLayerMix(value?: Partial<LayerMixTuning>): LayerMixTuning {
+  return {
+    lowEnd: clampMixValue(value?.lowEnd ?? DEFAULT_LAYER_MIX.lowEnd),
+    pad: clampMixValue(value?.pad ?? DEFAULT_LAYER_MIX.pad),
+    melody: clampMixValue(value?.melody ?? DEFAULT_LAYER_MIX.melody),
+    rhythm: clampMixValue(value?.rhythm ?? DEFAULT_LAYER_MIX.rhythm),
+  };
+}
+
+export function createLayerBuses(
+  ctx: BaseAudioContext,
+  target: AudioNode,
+  mix?: Partial<LayerMixTuning>
+): LayerBusMap {
+  const resolved = resolveLayerMix(mix);
   const buses = {
     pad: ctx.createGain(),
     bass: ctx.createGain(),
@@ -23,7 +45,15 @@ export function createLayerBuses(ctx: BaseAudioContext, target: AudioNode): Laye
 
   for (const layer of Object.keys(buses) as NoteLayer[]) {
     const bus = buses[layer];
-    bus.gain.value = LAYER_GAIN[layer];
+    const layerMix =
+      layer === "pad"
+        ? resolved.pad
+        : layer === "bass"
+          ? resolved.lowEnd
+          : layer === "melody"
+            ? resolved.melody
+            : resolved.rhythm;
+    bus.gain.value = LAYER_GAIN[layer] * layerMix;
     bus.connect(target);
   }
 

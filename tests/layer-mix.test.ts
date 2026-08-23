@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { NoteLayer } from "../src/shared/types.js";
-import { createLayerBuses, LAYER_GAIN } from "../src/audio/layer-mix.js";
+import { DEFAULT_LAYER_MIX, createLayerBuses, LAYER_GAIN } from "../src/audio/layer-mix.js";
 
 const LAYERS: readonly NoteLayer[] = ["pad", "bass", "melody", "arp", "bell", "perc"];
 
@@ -55,8 +55,34 @@ describe("layer mix table", () => {
     expect((ctx as unknown as FakeAudioContext).gains).toHaveLength(LAYERS.length);
     for (const layer of LAYERS) {
       const bus = buses[layer] as unknown as FakeGainNode;
-      expect(bus.gain.value).toBe(LAYER_GAIN[layer]);
+      const mix =
+        layer === "pad"
+          ? DEFAULT_LAYER_MIX.pad
+          : layer === "bass"
+            ? DEFAULT_LAYER_MIX.lowEnd
+            : layer === "melody"
+              ? DEFAULT_LAYER_MIX.melody
+              : DEFAULT_LAYER_MIX.rhythm;
+      expect(bus.gain.value).toBe(LAYER_GAIN[layer] * mix);
       expect(bus.connections).toEqual([target]);
     }
+  });
+
+  it("applies layer mix tuning to the rendered bus gains", () => {
+    const ctx = new FakeAudioContext() as unknown as BaseAudioContext;
+    const target = { label: "master" } as unknown as AudioNode;
+    const buses = createLayerBuses(ctx, target, {
+      lowEnd: 0.5,
+      pad: 0.8,
+      melody: 1.1,
+      rhythm: 0.75,
+    });
+
+    expect((buses.pad as unknown as FakeGainNode).gain.value).toBeCloseTo(0.82 * 0.8);
+    expect((buses.bass as unknown as FakeGainNode).gain.value).toBeCloseTo(0.78 * 0.5);
+    expect((buses.melody as unknown as FakeGainNode).gain.value).toBeCloseTo(1 * 1.1);
+    expect((buses.arp as unknown as FakeGainNode).gain.value).toBeCloseTo(0.72 * 0.75);
+    expect((buses.bell as unknown as FakeGainNode).gain.value).toBeCloseTo(0.66 * 0.75);
+    expect((buses.perc as unknown as FakeGainNode).gain.value).toBeCloseTo(0.72 * 0.75);
   });
 });
