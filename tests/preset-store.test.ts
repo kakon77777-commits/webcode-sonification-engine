@@ -10,6 +10,19 @@ import {
   upsertPreset,
 } from "../src/ui/presets.js";
 
+function rawPreset(id: string, overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    version: 1,
+    id,
+    label: `Preset ${id}`,
+    mappingProfile: { version: 1, id: "balanced" },
+    style: "ambient",
+    mode: "hybrid",
+    tuning: {},
+    ...overrides,
+  };
+}
+
 describe("preset store contract", () => {
   it("resolves full tuning defaults and clamps supported numeric ranges", () => {
     expect(resolveTuningOptions()).toEqual({
@@ -220,6 +233,46 @@ describe("preset store contract", () => {
     })).toBeNull();
   });
 
+  it("rejects URL and query-derived field families", () => {
+    for (const field of ["href", "query", "queryString", "queryParams", "search"]) {
+      expect(normalizePreset({ ...rawPreset("forbidden-query"), [field]: "page-derived" }), field).toBeNull();
+    }
+  });
+
+  it("rejects form and page-text field families", () => {
+    for (const field of [
+      "form",
+      "formValue",
+      "formValues",
+      "text",
+      "content",
+      "html",
+      "rawPage",
+      "pageContent",
+      "pageText",
+    ]) {
+      expect(normalizePreset({ ...rawPreset("forbidden-page"), [field]: "page-derived" }), field).toBeNull();
+    }
+  });
+
+  it("rejects DOM, score, variation, and audio field families", () => {
+    for (const field of [
+      "dom",
+      "pageFeatures",
+      "domSnapshot",
+      "variation",
+      "audio",
+      "audioData",
+      "audioBuffer",
+      "wav",
+      "midi",
+      "renderedAudio",
+      "blob",
+    ]) {
+      expect(normalizePreset({ ...rawPreset("forbidden-runtime"), [field]: {} }), field).toBeNull();
+    }
+  });
+
   it("keeps valid entries when the envelope contains malformed neighbors", () => {
     expect(readPresetEnvelope({
       version: 1,
@@ -386,6 +439,57 @@ describe("preset store contract", () => {
       "preset-4",
       "preset-13",
     ]);
+  });
+
+  it("canonicalizes envelope duplicates and caps the newest twelve entries before serialization", () => {
+    const entries = Array.from({ length: MAX_USER_PRESETS + 1 }, (_, index) =>
+      rawPreset(`entry-${index + 1}`)
+    );
+    entries.push(
+      rawPreset("entry-4", {
+        label: "Entry Four Updated",
+        mappingProfile: { version: 1, id: "media-forward" },
+      })
+    );
+
+    const canonical = readPresetEnvelope({ version: 1, presets: entries });
+
+    expect(canonical.map((preset) => preset.id)).toEqual([
+      "entry-2",
+      "entry-3",
+      "entry-5",
+      "entry-6",
+      "entry-7",
+      "entry-8",
+      "entry-9",
+      "entry-10",
+      "entry-11",
+      "entry-12",
+      "entry-13",
+      "entry-4",
+    ]);
+    expect(canonical.at(-1)).toMatchObject({
+      id: "entry-4",
+      label: "Entry Four Updated",
+      mappingProfile: { id: "media-forward" },
+    });
+
+    const serialized = serializePresetEnvelope(canonical);
+    expect(readPresetEnvelope(serialized)).toEqual(canonical);
+    expect(serializePresetEnvelope(readPresetEnvelope(serialized))).toEqual(serialized);
+  });
+
+  it("keeps the existing list unchanged when a runtime candidate fails normalization", () => {
+    const existing = readPresetEnvelope({
+      version: 1,
+      presets: [rawPreset("existing")],
+    });
+    const invalidCandidate = {
+      ...rawPreset("replacement"),
+      pageText: "must not enter the store",
+    } as unknown as Parameters<typeof upsertPreset>[1];
+
+    expect(upsertPreset(existing, invalidCandidate)).toEqual(existing);
   });
 
   it("removes presets by id without disturbing the rest of the list", () => {

@@ -20,7 +20,39 @@ const MODE_NAME_SET = new Set<string>(MODE_NAMES);
 const PRESET_VERSION = 1;
 const PRESET_ID_PATTERN = /^[a-z0-9][a-z0-9_-]{0,31}$/;
 const PRESET_LABEL_LIMIT = 48;
-const LOCAL_ONLY_FORBIDDEN_KEYS = ["url", "features", "tokens", "score", "variation"] as const;
+const LOCAL_ONLY_FORBIDDEN_KEYS = [
+  "url",
+  "URL",
+  "href",
+  "query",
+  "queryString",
+  "queryParams",
+  "search",
+  "form",
+  "formValue",
+  "formValues",
+  "text",
+  "content",
+  "html",
+  "rawPage",
+  "pageContent",
+  "pageText",
+  "dom",
+  "DOM",
+  "pageFeatures",
+  "domSnapshot",
+  "tokens",
+  "features",
+  "score",
+  "variation",
+  "audio",
+  "audioData",
+  "audioBuffer",
+  "wav",
+  "midi",
+  "renderedAudio",
+  "blob",
+] as const;
 
 function clampNumber(value: unknown, fallback: number, min: number, max: number): number {
   if (!Number.isFinite(value)) {
@@ -125,19 +157,24 @@ export function readPresetEnvelope(value: unknown): WsePreset[] {
     return [];
   }
 
-  const presets: WsePreset[] = [];
+  let presets: WsePreset[] = [];
   for (const entry of record.presets) {
     const normalized = normalizePreset(entry);
     if (normalized) {
-      presets.push(normalized);
+      presets = upsertPreset(presets, normalized);
     }
   }
   return presets;
 }
 
 export function upsertPreset(list: readonly WsePreset[], preset: WsePreset): WsePreset[] {
-  const next = list.filter((entry) => entry.id !== preset.id);
-  next.push(normalizePreset(preset) ?? preset);
+  const normalized = normalizePreset(preset);
+  if (!normalized) {
+    return [...list];
+  }
+
+  const next = list.filter((entry) => entry.id !== normalized.id);
+  next.push(normalized);
   return next.slice(-MAX_USER_PRESETS);
 }
 
