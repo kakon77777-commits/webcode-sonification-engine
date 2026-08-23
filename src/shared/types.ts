@@ -249,6 +249,21 @@ export interface GenerateOptions {
   mappingProfile?: MappingProfileInput;
 }
 
+export interface WsePreset {
+  version: 1;
+  id: string;
+  label: string;
+  mappingProfile: MappingProfile;
+  style: StyleName;
+  mode: ModeName;
+  tuning: TuningOptions;
+}
+
+export interface WsePresetEnvelope {
+  version: 1;
+  presets: WsePreset[];
+}
+
 /** Everything the visualizer page needs, handed over via chrome.storage.local. */
 export interface VizPayload {
   score: Score;
