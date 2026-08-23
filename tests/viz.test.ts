@@ -98,6 +98,7 @@ describe("visualizer provenance (v0.3)", () => {
   });
 
   it("visualizer reads compact mapping profile identity from score metadata only", () => {
+    expect(VISUALIZER_SOURCE).toContain("const profileId = pr.mappingProfileId?.trim();");
     expect(VISUALIZER_SOURCE).toContain("mappingProfileLabel");
     expect(VISUALIZER_SOURCE).toContain("mappingProfileHash");
     expect(VISUALIZER_SOURCE).not.toContain("mapping-profile.ts");

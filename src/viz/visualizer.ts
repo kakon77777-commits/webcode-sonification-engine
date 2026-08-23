@@ -55,16 +55,16 @@ function renderMeta(p: VizPayload): void {
     `${host} · ${pr.keyName} · ${pr.bpm} BPM · ${pr.lengthSec}s · ` +
     `${p.score.events.length} notes · ${pr.style} · #${p.score.fingerprint.hash}`;
   metaFinished.textContent = "";
+  const profileId = pr.mappingProfileId?.trim();
   const profileLabel = pr.mappingProfileLabel?.trim();
   const profileHash = pr.mappingProfileHash?.trim();
-  if (profileLabel && profileHash) {
-    metaProfile.textContent = `Profile ${profileLabel} · ${profileHash}`;
-    metaProfile.classList.remove("hidden");
-  } else if (profileLabel) {
-    metaProfile.textContent = `Profile ${profileLabel}`;
-    metaProfile.classList.remove("hidden");
-  } else if (profileHash) {
-    metaProfile.textContent = `Profile ${profileHash}`;
+  const profileParts = [
+    profileLabel || profileId,
+    profileLabel && profileId ? `(${profileId})` : undefined,
+    profileHash,
+  ].filter((part): part is string => Boolean(part));
+  if (profileParts.length > 0) {
+    metaProfile.textContent = `Profile ${profileParts.join(" · ")}`;
     metaProfile.classList.remove("hidden");
   } else {
     metaProfile.textContent = "";
