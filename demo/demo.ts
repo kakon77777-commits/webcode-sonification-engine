@@ -1,8 +1,10 @@
 import type { ModeName, Score, StyleName, TuningOptions } from "../src/shared/types.js";
+import { DEFAULT_TUNING } from "../src/shared/types.js";
 import { extractPageFeatures } from "../src/content/extract.js";
 import { computeFingerprint } from "../src/mapping/fingerprint.js";
 import { generateScore } from "../src/mapping/default-map.js";
 import { WseAudioEngine } from "../src/audio/engine.js";
+import { DEFAULT_LAYER_MIX, resolveLayerMix } from "../src/audio/layer-mix.js";
 import { downloadEncodedExport } from "../src/audio/export-download.js";
 import { encodeScore } from "../src/audio/export-registry.js";
 import type { ExportFormat, ExportOptions } from "../src/audio/export-types.js";
@@ -21,6 +23,7 @@ type DriveMode = "auto" | "scroll" | "live";
 const engine = new WseAudioEngine();
 let variation = 0;
 let lastScore: Score | null = null;
+const SETTINGS_KEY = "wse-demo-settings-v1";
 
 const $ = (id: string) => document.getElementById(id)!;
 const out = $("out");
@@ -32,12 +35,18 @@ function currentTuning(): TuningOptions {
     density: v("s-density") / 100,
     brightness: v("s-bright") / 100,
     reverb: v("s-reverb") / 100,
+    mix: resolveLayerMix({
+      lowEnd: v("s-low-end") / 100,
+      pad: v("s-pad") / 100,
+      melody: v("s-melody") / 100,
+      rhythm: v("s-rhythm") / 100,
+    }),
   };
 }
 
 function currentRenderOptions(): ExportOptions {
   const tuning = currentTuning();
-  return { brightness: tuning.brightness, reverb: tuning.reverb };
+  return { brightness: tuning.brightness, reverb: tuning.reverb, mix: tuning.mix };
 }
 
 function currentOptions(): {
@@ -52,6 +61,81 @@ function currentOptions(): {
     variation,
     tuning: currentTuning(),
   };
+}
+
+function resolvedTuning(tuning?: TuningOptions): TuningOptions {
+  return {
+    tempoShift: Number.isFinite(tuning?.tempoShift) ? tuning!.tempoShift : DEFAULT_TUNING.tempoShift,
+    density: Number.isFinite(tuning?.density) ? tuning!.density : DEFAULT_TUNING.density,
+    brightness: Number.isFinite(tuning?.brightness) ? tuning!.brightness : DEFAULT_TUNING.brightness,
+    reverb: Number.isFinite(tuning?.reverb) ? tuning!.reverb : DEFAULT_TUNING.reverb,
+    mix: resolveLayerMix(tuning?.mix),
+  };
+}
+
+function applyTuning(tuning?: TuningOptions): void {
+  const resolved = resolvedTuning(tuning);
+  const mix = resolveLayerMix(resolved.mix);
+  ($("s-tempo") as HTMLInputElement).value = String(resolved.tempoShift);
+  ($("s-density") as HTMLInputElement).value = String(Math.round(resolved.density * 100));
+  ($("s-bright") as HTMLInputElement).value = String(Math.round(resolved.brightness * 100));
+  ($("s-reverb") as HTMLInputElement).value = String(Math.round(resolved.reverb * 100));
+  ($("s-low-end") as HTMLInputElement).value = String(Math.round(mix.lowEnd * 100));
+  ($("s-pad") as HTMLInputElement).value = String(Math.round(mix.pad * 100));
+  ($("s-melody") as HTMLInputElement).value = String(Math.round(mix.melody * 100));
+  ($("s-rhythm") as HTMLInputElement).value = String(Math.round(mix.rhythm * 100));
+  renderSliderValues();
+}
+
+function renderSliderValues(): void {
+  const tempo = Number(($("s-tempo") as HTMLInputElement).value);
+  $("v-tempo").textContent = `${tempo >= 0 ? "+" : ""}${tempo}`;
+  $("v-density").textContent = `${($("s-density") as HTMLInputElement).value}%`;
+  $("v-bright").textContent = ($("s-bright") as HTMLInputElement).value;
+  $("v-reverb").textContent = ($("s-reverb") as HTMLInputElement).value;
+  $("v-low-end").textContent = `${($("s-low-end") as HTMLInputElement).value}%`;
+  $("v-pad").textContent = `${($("s-pad") as HTMLInputElement).value}%`;
+  $("v-melody").textContent = `${($("s-melody") as HTMLInputElement).value}%`;
+  $("v-rhythm").textContent = `${($("s-rhythm") as HTMLInputElement).value}%`;
+}
+
+function saveSettings(): void {
+  const settings = {
+    style: ($("style") as HTMLSelectElement).value,
+    mode: ($("mode") as HTMLSelectElement).value,
+    playback: ($("playback") as HTMLSelectElement).value,
+    tuning: currentTuning(),
+  };
+  window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+function loadSettings(): void {
+  const raw = window.localStorage.getItem(SETTINGS_KEY);
+  if (!raw) {
+    applyTuning({
+      ...DEFAULT_TUNING,
+      mix: DEFAULT_LAYER_MIX,
+    });
+    return;
+  }
+
+  try {
+    const saved = JSON.parse(raw) as {
+      style?: string;
+      mode?: string;
+      playback?: string;
+      tuning?: TuningOptions;
+    };
+    if (saved.style) ($("style") as HTMLSelectElement).value = saved.style;
+    if (saved.mode) ($("mode") as HTMLSelectElement).value = saved.mode;
+    if (saved.playback) ($("playback") as HTMLSelectElement).value = saved.playback;
+    applyTuning(saved.tuning);
+  } catch {
+    applyTuning({
+      ...DEFAULT_TUNING,
+      mix: DEFAULT_LAYER_MIX,
+    });
+  }
 }
 
 function analyze() {
@@ -200,11 +284,11 @@ async function play() {
   $("viz").classList.remove("on");
 
   if (driveMode === "scroll") {
-    await engine.startScrollMode(score, { brightness: tuning.brightness, reverb: tuning.reverb });
+    await engine.startScrollMode(score, { brightness: tuning.brightness, reverb: tuning.reverb, mix: tuning.mix });
     attachScrollListener();
     engine.setScrollFraction(currentScrollFraction()); // sync to wherever the user already is
   } else if (driveMode === "live") {
-    await engine.startLiveMode(score, { brightness: tuning.brightness, reverb: tuning.reverb });
+    await engine.startLiveMode(score, { brightness: tuning.brightness, reverb: tuning.reverb, mix: tuning.mix });
     $("liveLog").textContent = "";
     $("liveFeed").classList.add("on");
     startLiveObserver();
@@ -212,6 +296,7 @@ async function play() {
     await engine.play(score, {
       brightness: tuning.brightness,
       reverb: tuning.reverb,
+      mix: tuning.mix,
       onEnded: () => {
         out.textContent = "finished";
       },
@@ -298,6 +383,19 @@ $("export").addEventListener("click", async () => {
     btn.disabled = lastScore === null;
   }
 });
+
+for (const id of ["style", "mode", "playback"] as const) {
+  $(id).addEventListener("change", () => saveSettings());
+}
+
+for (const id of ["s-tempo", "s-density", "s-bright", "s-reverb", "s-low-end", "s-pad", "s-melody", "s-rhythm"] as const) {
+  $(id).addEventListener("input", () => {
+    renderSliderValues();
+    saveSettings();
+  });
+}
+
+loadSettings();
 
 // Expose analysis (without audio) immediately for tests/automation.
 (window as any).__wseAnalyze = analyze;

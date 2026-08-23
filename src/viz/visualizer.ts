@@ -1,5 +1,6 @@
 import type { VizPayload } from "../shared/types.js";
 import { WseAudioEngine } from "../audio/engine.js";
+import { resolveLayerMix } from "../audio/layer-mix.js";
 import { downloadEncodedExport } from "../audio/export-download.js";
 import { encodeScore } from "../audio/export-registry.js";
 import type { ExportFormat, ExportOptions } from "../audio/export-types.js";
@@ -22,7 +23,7 @@ const exportFormat = $<HTMLSelectElement>("export-format");
 const exportStatus = $<HTMLParagraphElement>("export-status");
 
 function renderOptions(p: VizPayload): ExportOptions {
-  return { brightness: p.tuning.brightness, reverb: p.tuning.reverb };
+  return { brightness: p.tuning.brightness, reverb: p.tuning.reverb, mix: resolveLayerMix(p.tuning.mix) };
 }
 
 function renderLegend(): void {
@@ -61,6 +62,7 @@ async function startPlayback(p: VizPayload): Promise<void> {
     await engine.play(p.score, {
       brightness: p.tuning.brightness,
       reverb: p.tuning.reverb,
+      mix: resolveLayerMix(p.tuning.mix),
       onEnded: () => {
         $<HTMLDivElement>("meta").textContent += " · finished";
       },

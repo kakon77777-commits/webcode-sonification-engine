@@ -3,6 +3,7 @@ import { DEFAULT_TUNING } from "../shared/types.js";
 import type { DriveMode, PlaybackState, WseErrorCode } from "../shared/messages.js";
 import { computeFingerprint } from "../mapping/fingerprint.js";
 import { generateScore } from "../mapping/default-map.js";
+import { DEFAULT_LAYER_MIX, resolveLayerMix } from "../audio/layer-mix.js";
 import { downloadEncodedExport } from "../audio/export-download.js";
 import { encodeScore } from "../audio/export-registry.js";
 import type { ExportFormat, ExportOptions } from "../audio/export-types.js";
@@ -43,6 +44,10 @@ const sliders = {
   density: $<HTMLInputElement>("s-density"),
   bright: $<HTMLInputElement>("s-bright"),
   reverb: $<HTMLInputElement>("s-reverb"),
+  lowEnd: $<HTMLInputElement>("s-low-end"),
+  pad: $<HTMLInputElement>("s-pad"),
+  melody: $<HTMLInputElement>("s-melody"),
+  rhythm: $<HTMLInputElement>("s-rhythm"),
 };
 
 function currentTuning(): TuningOptions {
@@ -51,12 +56,28 @@ function currentTuning(): TuningOptions {
     density: Number(sliders.density.value) / 100,
     brightness: Number(sliders.bright.value) / 100,
     reverb: Number(sliders.reverb.value) / 100,
+    mix: resolveLayerMix({
+      lowEnd: Number(sliders.lowEnd.value) / 100,
+      pad: Number(sliders.pad.value) / 100,
+      melody: Number(sliders.melody.value) / 100,
+      rhythm: Number(sliders.rhythm.value) / 100,
+    }),
   };
 }
 
 function currentRenderOptions(): ExportOptions {
   const tuning = currentTuning();
-  return { brightness: tuning.brightness, reverb: tuning.reverb };
+  return { brightness: tuning.brightness, reverb: tuning.reverb, mix: tuning.mix };
+}
+
+function resolvedTuning(tuning?: TuningOptions): TuningOptions {
+  return {
+    tempoShift: Number.isFinite(tuning?.tempoShift) ? tuning!.tempoShift : DEFAULT_TUNING.tempoShift,
+    density: Number.isFinite(tuning?.density) ? tuning!.density : DEFAULT_TUNING.density,
+    brightness: Number.isFinite(tuning?.brightness) ? tuning!.brightness : DEFAULT_TUNING.brightness,
+    reverb: Number.isFinite(tuning?.reverb) ? tuning!.reverb : DEFAULT_TUNING.reverb,
+    mix: resolveLayerMix(tuning?.mix),
+  };
 }
 
 function renderSliderValues(): void {
@@ -65,6 +86,10 @@ function renderSliderValues(): void {
   $<HTMLSpanElement>("v-density").textContent = `${sliders.density.value}%`;
   $<HTMLSpanElement>("v-bright").textContent = sliders.bright.value;
   $<HTMLSpanElement>("v-reverb").textContent = sliders.reverb.value;
+  $<HTMLSpanElement>("v-low-end").textContent = `${sliders.lowEnd.value}%`;
+  $<HTMLSpanElement>("v-pad").textContent = `${sliders.pad.value}%`;
+  $<HTMLSpanElement>("v-melody").textContent = `${sliders.melody.value}%`;
+  $<HTMLSpanElement>("v-rhythm").textContent = `${sliders.rhythm.value}%`;
 }
 
 const ERROR_TEXT: Record<WseErrorCode, string> = {
@@ -303,10 +328,16 @@ async function saveSettings(): Promise<void> {
 }
 
 function applyTuning(t: TuningOptions): void {
-  sliders.tempo.value = String(t.tempoShift);
-  sliders.density.value = String(Math.round(t.density * 100));
-  sliders.bright.value = String(Math.round(t.brightness * 100));
-  sliders.reverb.value = String(Math.round(t.reverb * 100));
+  const resolved = resolvedTuning(t);
+  const mix = resolveLayerMix(resolved.mix);
+  sliders.tempo.value = String(resolved.tempoShift);
+  sliders.density.value = String(Math.round(resolved.density * 100));
+  sliders.bright.value = String(Math.round(resolved.brightness * 100));
+  sliders.reverb.value = String(Math.round(resolved.reverb * 100));
+  sliders.lowEnd.value = String(Math.round(mix.lowEnd * 100));
+  sliders.pad.value = String(Math.round(mix.pad * 100));
+  sliders.melody.value = String(Math.round(mix.melody * 100));
+  sliders.rhythm.value = String(Math.round(mix.rhythm * 100));
   renderSliderValues();
 }
 
@@ -320,7 +351,7 @@ async function init(): Promise<void> {
   if (saved.style) styleSel.value = saved.style;
   if (saved.mode) modeSel.value = saved.mode;
   if (saved.playback) playbackSel.value = saved.playback;
-  applyTuning(saved.tuning ?? DEFAULT_TUNING);
+  applyTuning(resolvedTuning(saved.tuning));
 
   // Reflect ongoing playback if the popup was reopened.
   try {
@@ -350,7 +381,10 @@ for (const el of Object.values(sliders)) {
   el.addEventListener("change", () => void saveSettings());
 }
 $<HTMLButtonElement>("tune-reset").addEventListener("click", () => {
-  applyTuning(DEFAULT_TUNING);
+  applyTuning({
+    ...DEFAULT_TUNING,
+    mix: DEFAULT_LAYER_MIX,
+  });
   void saveSettings();
 });
 

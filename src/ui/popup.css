@@ -180,6 +180,10 @@ summary {
   font-size: 12px;
 }
 
+.slider-row label {
+  line-height: 1.1;
+}
+
 .slider-row .value {
   text-align: right;
   font-size: 11px;

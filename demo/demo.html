@@ -30,6 +30,8 @@
     #out { font-size: 13px; color: #94a3b8; margin-left: 8px; }
     .knob { font-size: 11px; color: #64748b; display: inline-flex; align-items: center; gap: 4px; }
     .knob input { width: 70px; accent-color: #38bdf8; }
+    .knob-row { display: inline-grid; grid-template-columns: auto 70px auto; align-items: center; gap: 6px; font-size: 11px; color: #64748b; }
+    .knob-row .value { min-width: 40px; text-align: right; color: #7dd3fc; font-weight: 600; }
     ul { color: #94a3b8; padding-left: 22px; }
     /* Visualizer panel */
     #viz { display: none; border-bottom: 1px solid #334155; background: #0b1120; }
@@ -76,10 +78,14 @@
       <option value="scroll">Scroll = playhead</option>
       <option value="live">Live = DOM changes</option>
     </select>
-    <span class="knob">Tempo <input type="range" id="s-tempo" min="-30" max="30" step="1" value="0"></span>
-    <span class="knob">Density <input type="range" id="s-density" min="50" max="150" step="5" value="100"></span>
-    <span class="knob">Bright <input type="range" id="s-bright" min="0" max="100" step="5" value="50"></span>
-    <span class="knob">Reverb <input type="range" id="s-reverb" min="0" max="100" step="5" value="50"></span>
+    <span class="knob-row"><label for="s-tempo">Tempo</label><input type="range" id="s-tempo" min="-30" max="30" step="1" value="0"><span class="value" id="v-tempo">+0</span></span>
+    <span class="knob-row"><label for="s-density">Density</label><input type="range" id="s-density" min="50" max="150" step="5" value="100"><span class="value" id="v-density">100%</span></span>
+    <span class="knob-row"><label for="s-bright">Bright</label><input type="range" id="s-bright" min="0" max="100" step="5" value="50"><span class="value" id="v-bright">50</span></span>
+    <span class="knob-row"><label for="s-reverb">Reverb</label><input type="range" id="s-reverb" min="0" max="100" step="5" value="50"><span class="value" id="v-reverb">50</span></span>
+    <span class="knob-row"><label for="s-low-end">Low End</label><input type="range" id="s-low-end" min="0" max="100" step="1" value="72"><span class="value" id="v-low-end">72%</span></span>
+    <span class="knob-row"><label for="s-pad">Pads</label><input type="range" id="s-pad" min="0" max="125" step="1" value="100"><span class="value" id="v-pad">100%</span></span>
+    <span class="knob-row"><label for="s-melody">Melody</label><input type="range" id="s-melody" min="0" max="125" step="1" value="100"><span class="value" id="v-melody">100%</span></span>
+    <span class="knob-row"><label for="s-rhythm">Rhythm</label><input type="range" id="s-rhythm" min="0" max="125" step="1" value="90"><span class="value" id="v-rhythm">90%</span></span>
     <label class="export-format">
       <span>Format</span>
       <select id="export-format">
