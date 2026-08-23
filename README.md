@@ -21,7 +21,7 @@ Click the extension icon → **Analyze & Play**. WSE reads the structure of the 
 
 ```
 W → F(W) → Z → S_W → Θ → Q → A
-Webpage → Features → Normalized → Fingerprint → Profile → Score → Audio
+Webpage → Features → Normalized → Fingerprint → Mapping Profile → Score → Audio
 ```
 
 The mapping is **deterministic**: the same page structure always produces the same music. Every site gets its own **Site Sound Signature** — Wikipedia does not sound like GitHub, because their structures differ, not because anyone hard-coded it.
@@ -33,7 +33,7 @@ The mapping is **deterministic**: the same page structure always produces the sa
 | Tag diversity (entropy) + node/script/link density | Tempo (52–176 BPM) |
 | Average CSS hue | Key (12 pitch classes) |
 | Palette lightness × saturation | One of **7 scales**: major, minor, dorian, lydian, mixolydian, both pentatonics |
-| Dominant structure family (content / navigation / media / form) | **Lead & arpeggio instruments** within the chosen style palette |
+| Dominant structure family (content / navigation / media / form), optionally reweighted by a bounded Mapping Profile | **Lead & arpeggio instruments** within the chosen style palette |
 | DOM max depth | Pitch register width |
 | Link density | Arpeggio busyness (per-site Euclidean pattern) |
 | Image density | Bell accent layer |
@@ -59,9 +59,23 @@ All sounds are synthesized (oscillators + filters + envelopes + procedural rever
 
 Every sustained/melodic voice has a **filter envelope** — brightness that moves through the note (a bow-attack sweep on strings, felt-damping darkening on piano, a synth-lead "zap") instead of a static, lifeless cutoff. The master bus adds a gentle warmth/air EQ and a soft-knee saturator (exact identity below the threshold, only the loudest peaks get rounded off) before compression — a light mastering pass, not a different synthesis engine. The procedural reverb impulse response has a pre-delay, sparse early reflections, and a tail that progressively darkens (air absorption), replacing flat decaying noise.
 
-### Customize sliders
+### Mapping Profiles and Presets
 
-The popup exposes eight deterministic local controls. Four shape the score itself — **Tempo** (±30 BPM), **Density** (50–150 %), **Brightness**, **Reverb** — and four rebalance the rendered layer buses — **Low End** (`72%` default), **Pad** (`100%`), **Melody** (`100%`), **Rhythm** (`90%`). All eight are saved locally in `chrome.storage.local`, restored deterministically across sessions, and never send data anywhere.
+WSE v0.5 adds a bounded **Mapping Profile** layer that can reweight the four existing structural character signals without turning the engine into free-form composition. The built-in profiles are:
+
+- **Balanced** — preserves the default mapping
+- **Content-forward**
+- **Navigation-forward**
+- **Media-forward**
+- **Form-forward**
+
+Profiles affect how the existing structure-driven orchestration leans when a new score is generated. They do **not** replace the page fingerprint, rewrite the canonical feature string, or inject arbitrary note rules. The resulting score carries separate profile metadata (`mappingProfileId`, `mappingProfileLabel`, `mappingProfileHash`) so the chosen profile identity stays visible while the page fingerprint remains the page identity.
+
+WSE also supports local **Presets**: saved bundles of profile, style, mode, and tuning. Presets are stored locally only, capped and validated client-side, and never include raw page data, URL query strings, DOM snapshots, tokens, scores, or form input.
+
+### Customize sliders and local controls
+
+The popup exposes deterministic local controls for the score and render path. Four shape the score itself — **Tempo** (±30 BPM), **Density** (50–150 %), **Brightness**, **Reverb** — and four rebalance the rendered layer buses — **Low End** (`72%` default), **Pad** (`100%`), **Melody** (`100%`), **Rhythm** (`90%`). Mapping Profile selection and local Preset naming live alongside those controls. All settings are restored locally and never send data anywhere.
 
 The mix controls do **not** rewrite the webpage analysis, fingerprint, explanation list, song form, or note-event structure. They only change layer gain at playback/export render time: same page + same structural tuning still yields the same score, while different mix values produce different local renders of that score.
 
@@ -90,7 +104,7 @@ Never the URL alone — if a site's structure changes, its music changes too. **
 - **WAV** renders the score offline through the identical synthesis graph you just heard — not a separate export path — and downloads a standard 16-bit PCM `.wav` file. The current **Low End / Pad / Melody / Rhythm** mix is applied to that render.
 - **MIDI** encodes the same deterministic score as a `.mid` file with stable layer tracks: `WSE`, `WSE pad`, `WSE bass`, `WSE melody`, `WSE arp`, `WSE bell`, and `WSE perc`. Mix-only changes do not alter the score or MIDI bytes.
 
-Both formats use deterministic `wse-<fingerprint>-<style>` filenames, and the export status text reports the completed WAV or MIDI download. Additional export formats, custom mapping profiles, and sibling-site links remain separate future plans.
+Both formats use deterministic `wse-<fingerprint>-<style>` filenames, and the export status text reports the completed WAV or MIDI download.
 
 ---
 
@@ -116,6 +130,7 @@ node scripts/serve.mjs
 - The canonical URL is `origin + pathname` only — query strings and fragments are never read into the pipeline.
 - Form values are never read: `input`, `textarea`, `select`, `[contenteditable]` contents are excluded from traversal and text statistics (including nested elements inside editable regions).
 - Only aggregate text statistics (length, word count) are used — never the text itself.
+- Presets and profile selections are local configuration only. They never store page-derived data such as raw `PageFeatures`, tokens, scores, DOM snapshots, or form values.
 - No remote code, no page-script execution.
 
 ## Visualizer — watch the code become music
@@ -125,7 +140,7 @@ node scripts/serve.mjs
 - the page's element tokens (`<div>` `<a>` `<img>` …, tag + depth only) stream by like subtitles, and the token that structurally drove each note **lights up the instant it sounds** — links flash when the arpeggio plucks, images flash on bells, buttons flash on percussion;
 - below, a **piano-roll score scrolls under a fixed playhead**, colored by mapping layer, with onset flashes on every note.
 
-This is honest provenance, not decoration: every `NoteEvent` carries the mapping layer that generated it, and each layer highlights exactly the tag family that feeds it (Rules 3–5). The same visualizer runs in the live demo on the website.
+This is honest provenance, not decoration: every `NoteEvent` carries the mapping layer that generated it, and each layer highlights exactly the tag family that feeds it (Rules 3–5). The visualizer also shows the score's profile identity from payload metadata so you can see the selected Mapping Profile without confusing it with the page fingerprint. The same visualizer runs in the live demo on the website.
 
 ## Explain Mode
 
@@ -192,7 +207,7 @@ WSE deliberately claims a narrower, different thing:
 
 ## Roadmap
 
-Future work is tracked in separate plans after verification. Export formats beyond WAV/MIDI, custom profile workflows, and sister-site links remain separate future plans.
+Future work is tracked in separate plans after verification.
 
 ## Authorship
 

@@ -11,6 +11,7 @@ import type { NoteLayer } from "../src/shared/types.js";
 import { loadFixture, syntheticFeatures } from "./helpers.js";
 
 const LAYERS: NoteLayer[] = ["pad", "bass", "melody", "arp", "bell", "perc"];
+const VISUALIZER_SOURCE = readFileSync(join(process.cwd(), "src", "viz", "visualizer.ts"), "utf8");
 
 describe("visualizer provenance (v0.3)", () => {
   it("extractor emits document-order tokens with tag + depth only", () => {
@@ -94,5 +95,13 @@ describe("visualizer provenance (v0.3)", () => {
     const withPanel = extractPageFeatures(win.document, win);
     expect(withPanel.dom.totalNodes).toBe(base.dom.totalNodes);
     expect(computeFingerprint(withPanel).hash).toBe(computeFingerprint(base).hash);
+  });
+
+  it("visualizer reads compact mapping profile identity from score metadata only", () => {
+    expect(VISUALIZER_SOURCE).toContain("mappingProfileLabel");
+    expect(VISUALIZER_SOURCE).toContain("mappingProfileHash");
+    expect(VISUALIZER_SOURCE).not.toContain("mapping-profile.ts");
+    expect(VISUALIZER_SOURCE).not.toContain("BUILTIN_MAPPING_PROFILES");
+    expect(VISUALIZER_SOURCE).not.toContain("resolveMappingProfile(");
   });
 });

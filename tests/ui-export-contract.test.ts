@@ -189,4 +189,14 @@ describe("export UI contract", () => {
     expect(visualizerSource).toContain("p.tuning.mix");
     expect(visualizerSource).toContain("encodeScore(payload.score, format, renderOptions(payload))");
   });
+
+  it("visualizer exposes a compact profile metadata target in the existing identity area", () => {
+    const html = read("src/viz/visualizer.html");
+    const document = new JSDOM(html).window.document;
+
+    const meta = document.querySelector<HTMLDivElement>("#meta");
+    expect(meta).not.toBeNull();
+    expect(meta?.querySelector("#meta-profile")).not.toBeNull();
+    expect(document.querySelectorAll("#mapping-profile")).toHaveLength(0);
+  });
 });

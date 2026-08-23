@@ -21,6 +21,9 @@ let payload: VizPayload | null = null;
 const exportBtn = $<HTMLButtonElement>("export");
 const exportFormat = $<HTMLSelectElement>("export-format");
 const exportStatus = $<HTMLParagraphElement>("export-status");
+const metaIdentity = $<HTMLSpanElement>("meta-identity");
+const metaProfile = $<HTMLSpanElement>("meta-profile");
+const metaFinished = $<HTMLSpanElement>("meta-finished");
 
 function renderOptions(p: VizPayload): ExportOptions {
   return { brightness: p.tuning.brightness, reverb: p.tuning.reverb, mix: resolveLayerMix(p.tuning.mix) };
@@ -48,9 +51,25 @@ function renderMeta(p: VizPayload): void {
   } catch {
     // Keep raw URL.
   }
-  $<HTMLDivElement>("meta").textContent =
+  metaIdentity.textContent =
     `${host} · ${pr.keyName} · ${pr.bpm} BPM · ${pr.lengthSec}s · ` +
     `${p.score.events.length} notes · ${pr.style} · #${p.score.fingerprint.hash}`;
+  metaFinished.textContent = "";
+  const profileLabel = pr.mappingProfileLabel?.trim();
+  const profileHash = pr.mappingProfileHash?.trim();
+  if (profileLabel && profileHash) {
+    metaProfile.textContent = `Profile ${profileLabel} · ${profileHash}`;
+    metaProfile.classList.remove("hidden");
+  } else if (profileLabel) {
+    metaProfile.textContent = `Profile ${profileLabel}`;
+    metaProfile.classList.remove("hidden");
+  } else if (profileHash) {
+    metaProfile.textContent = `Profile ${profileHash}`;
+    metaProfile.classList.remove("hidden");
+  } else {
+    metaProfile.textContent = "";
+    metaProfile.classList.add("hidden");
+  }
 }
 
 async function startPlayback(p: VizPayload): Promise<void> {
@@ -64,7 +83,7 @@ async function startPlayback(p: VizPayload): Promise<void> {
       reverb: p.tuning.reverb,
       mix: resolveLayerMix(p.tuning.mix),
       onEnded: () => {
-        $<HTMLDivElement>("meta").textContent += " · finished";
+        metaFinished.textContent = " · finished";
       },
     });
   } catch {
@@ -84,7 +103,10 @@ async function init(): Promise<void> {
   payload = stored.wseVizPayload ?? null;
   if (!payload) {
     $("empty").classList.remove("hidden");
-    $<HTMLDivElement>("meta").textContent = "no score";
+    metaIdentity.textContent = "no score";
+    metaProfile.textContent = "";
+    metaProfile.classList.add("hidden");
+    metaFinished.textContent = "";
     return;
   }
   renderMeta(payload);
