@@ -85,6 +85,25 @@ describe("mapping profile contract", () => {
     ]);
   });
 
+  it("preserves explicitly supplied whitespace-only display metadata", () => {
+    const resolved = resolveMappingProfile({
+      id: "content-forward",
+      label: "   ",
+      description: "\t\n",
+    });
+
+    expect(resolved.label).toBe("");
+    expect(resolved.description).toBe("");
+    expect(resolveMappingProfile({ id: "content-forward" })).toMatchObject({
+      label: "Content-forward",
+      description: "Emphasize text and article structure.",
+    });
+    expect(resolveMappingProfile({ id: "content-forward", label: undefined, description: undefined })).toMatchObject({
+      label: "Content-forward",
+      description: "Emphasize text and article structure.",
+    });
+  });
+
   it("returns fresh objects each time", () => {
     const a = resolveMappingProfile();
     const b = resolveMappingProfile();

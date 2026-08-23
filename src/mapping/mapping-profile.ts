@@ -124,8 +124,8 @@ export function resolveMappingProfile(input?: MappingProfileInput): MappingProfi
   return {
     version: MAPPING_PROFILE_VERSION,
     id,
-    label: clampText(input?.label, LABEL_LIMIT) || builtin.label,
-    description: clampText(input?.description, DESCRIPTION_LIMIT) || builtin.description,
+    label: input?.label === undefined ? builtin.label : clampText(input.label, LABEL_LIMIT),
+    description: input?.description === undefined ? builtin.description : clampText(input.description, DESCRIPTION_LIMIT),
     characterBias: createCharacterBias(input?.characterBias ?? builtin.characterBias),
   };
 }
