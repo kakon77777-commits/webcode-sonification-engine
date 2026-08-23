@@ -279,6 +279,7 @@ function loadSettings(): void {
 }
 
 function analyze() {
+  prepareRuntimePanelsForAnalysis();
   out.textContent = "idle";
   const features = extractPageFeatures(document, window);
   const fingerprint = computeFingerprint(features);
@@ -383,6 +384,14 @@ function stopLiveObserver(): void {
   liveAttrChanged = [];
 }
 
+function prepareRuntimePanelsForAnalysis(): void {
+  detachScrollListener();
+  stopLiveObserver();
+  $("liveFeed").classList.remove("on");
+  viz?.stop();
+  $("viz").classList.remove("on");
+}
+
 function renderVizLegend(): void {
   const legend = $("viz-legend");
   if (legend.childElementCount > 0) return;
@@ -408,11 +417,6 @@ async function play() {
   };
   const tuning = currentTuning();
   const driveMode = ($("playback") as HTMLSelectElement).value as DriveMode;
-  detachScrollListener();
-  stopLiveObserver();
-  $("liveFeed").classList.remove("on");
-  viz?.stop();
-  $("viz").classList.remove("on");
 
   if (driveMode === "scroll") {
     await engine.startScrollMode(score, { brightness: tuning.brightness, reverb: tuning.reverb, mix: tuning.mix });

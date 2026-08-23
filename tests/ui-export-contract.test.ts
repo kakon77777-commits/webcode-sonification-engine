@@ -154,6 +154,22 @@ describe("export UI contract", () => {
     expect(loadPresetsBody).toContain("return [];");
   });
 
+  it("demo stops and hides runtime panels before extracting page features", () => {
+    const source = read("demo/demo.ts");
+    const analyzeBody = source.match(/function analyze\(\) \{([\s\S]*?)\n\}/)?.[1] ?? "";
+    const cleanupIndex = analyzeBody.indexOf("prepareRuntimePanelsForAnalysis();");
+    const extractionIndex = analyzeBody.indexOf("extractPageFeatures(document, window)");
+    expect(cleanupIndex).toBeGreaterThanOrEqual(0);
+    expect(extractionIndex).toBeGreaterThan(cleanupIndex);
+
+    const cleanupBody = source.match(/function prepareRuntimePanelsForAnalysis\(\): void \{([\s\S]*?)\n\}/)?.[1] ?? "";
+    expect(cleanupBody).toContain("detachScrollListener()");
+    expect(cleanupBody).toContain("stopLiveObserver()");
+    expect(cleanupBody).toContain('$("liveFeed").classList.remove("on")');
+    expect(cleanupBody).toContain("viz?.stop()");
+    expect(cleanupBody).toContain('$("viz").classList.remove("on")');
+  });
+
   it.each(uiSources)("%s source wires mappingProfile through GenerateOptions", (_name, path) => {
     const source = read(path);
 
