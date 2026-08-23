@@ -227,6 +227,7 @@ export function generateScore(
   const mode = options.mode;
 
   // §17: the page's structural character picks the actual voices.
+  const baselineOrch = chooseOrchestration(norm, options.style);
   const orch = chooseOrchestration(norm, options.style, mappingProfile);
   const melodyInstr = orch.melody;
   const arpInstr = orch.arp;
@@ -356,7 +357,7 @@ export function generateScore(
           });
           // Grace-note ornament for breathy winds (蕭/笛): one sixteenth before,
           // one scale degree above, quiet — a signature of the eastern voices.
-          if (ORNAMENTED.has(melodyInstr) && mode !== "analytical" && t >= beat / 4) {
+          if (ORNAMENTED.has(baselineOrch.melody) && mode !== "analytical" && t >= beat / 4) {
             if (rng() < 0.3) {
               events.push({
                 time: t - beat / 4,

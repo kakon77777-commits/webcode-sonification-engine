@@ -3,6 +3,7 @@ import { generateScore } from "../src/mapping/default-map.js";
 import { canonicalFeatureString, computeFingerprint } from "../src/mapping/fingerprint.js";
 import { MAX_EVENTS_PER_SECOND, MAX_VOICES, maxEventsPerSecond, maxSimultaneousVoices } from "../src/mapping/limits.js";
 import { mappingProfileHash, resolveMappingProfile } from "../src/mapping/mapping-profile.js";
+import type { NoteEvent } from "../src/shared/types.js";
 import { syntheticFeatures } from "./helpers.js";
 
 const BASE_OPTIONS = {
@@ -10,6 +11,25 @@ const BASE_OPTIONS = {
   mode: "hybrid",
   variation: 0,
 } as const;
+
+function structuralSignature(events: NoteEvent[]) {
+  return events.map(({ time, duration, pitch, velocity, pan, layer }) => ({
+    time,
+    duration,
+    pitch,
+    velocity,
+    pan,
+    layer,
+  }));
+}
+
+function expectEventContracts(events: NoteEvent[]) {
+  expect(
+    events.every((event) => ["pad", "bass", "melody", "arp", "bell", "perc"].includes(event.layer))
+  ).toBe(true);
+  expect(maxEventsPerSecond(events)).toBeLessThanOrEqual(MAX_EVENTS_PER_SECOND);
+  expect(maxSimultaneousVoices(events)).toBeLessThanOrEqual(MAX_VOICES);
+}
 
 describe("mapping profile integration at generateScore", () => {
   it("keeps the default balanced score identical when the profile is omitted or explicitly balanced", () => {
@@ -87,14 +107,11 @@ describe("mapping profile integration at generateScore", () => {
       effect: "lead voice: epiano, arpeggio voice: pluck",
     });
     expect(focused.profile.explain.slice(2)).toEqual(base.profile.explain.slice(2));
+    expect(focused.events).toHaveLength(base.events.length);
+    expect(structuralSignature(focused.events)).toEqual(structuralSignature(base.events));
     expect(focused.events).toEqual(focusedAgain.events);
     expect(focused.profile).toEqual(focusedAgain.profile);
-    expect(
-      focused.events.every((event) =>
-        ["pad", "bass", "melody", "arp", "bell", "perc"].includes(event.layer)
-      )
-    ).toBe(true);
-    expect(maxEventsPerSecond(focused.events)).toBeLessThanOrEqual(MAX_EVENTS_PER_SECOND);
-    expect(maxSimultaneousVoices(focused.events)).toBeLessThanOrEqual(MAX_VOICES);
+    expectEventContracts(base.events);
+    expectEventContracts(focused.events);
   });
 });
