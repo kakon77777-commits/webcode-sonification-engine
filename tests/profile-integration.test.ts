@@ -3,6 +3,9 @@ import { generateScore } from "../src/mapping/default-map.js";
 import { canonicalFeatureString, computeFingerprint } from "../src/mapping/fingerprint.js";
 import { MAX_EVENTS_PER_SECOND, MAX_VOICES, maxEventsPerSecond, maxSimultaneousVoices } from "../src/mapping/limits.js";
 import { mappingProfileHash, resolveMappingProfile } from "../src/mapping/mapping-profile.js";
+import { normalizeFeatures } from "../src/mapping/normalize.js";
+import { chooseOrchestration } from "../src/mapping/orchestration.js";
+import { buildExplain, deriveProfile } from "../src/mapping/profile.js";
 import type { NoteEvent } from "../src/shared/types.js";
 import { syntheticFeatures } from "./helpers.js";
 
@@ -32,6 +35,43 @@ function expectEventContracts(events: NoteEvent[]) {
 }
 
 describe("mapping profile integration at generateScore", () => {
+  it("keeps the legacy three-argument deriveProfile call profile-aware", () => {
+    const features = syntheticFeatures();
+    const fingerprint = computeFingerprint(features);
+    const profile = deriveProfile(features, fingerprint, {
+      ...BASE_OPTIONS,
+      mappingProfile: {
+        id: "legacy-reader",
+        label: "Legacy Reader",
+        characterBias: { content: 1.25, navigation: 0.85, media: 0.85, form: 0.85 },
+      },
+    });
+
+    expect(profile).toMatchObject({
+      character: "content",
+      mappingProfileId: "legacy-reader",
+      mappingProfileLabel: "Legacy Reader",
+    });
+    expect(profile.explain[0]).toMatchObject({
+      feature: "Mapping profile",
+      value: "Legacy Reader",
+    });
+  });
+
+  it("keeps the legacy four-argument buildExplain call balanced", () => {
+    const features = syntheticFeatures();
+    const fingerprint = computeFingerprint(features);
+    const norm = normalizeFeatures(features);
+    const profile = deriveProfile(features, fingerprint, BASE_OPTIONS);
+    const orchestration = chooseOrchestration(norm, BASE_OPTIONS.style);
+
+    expect(buildExplain(features, norm, profile, orchestration)[0]).toEqual({
+      feature: "Mapping profile",
+      value: "Balanced",
+      effect: "content 100%, navigation 100%, media 100%, form 100%",
+    });
+  });
+
   it("keeps the default balanced score identical when the profile is omitted or explicitly balanced", () => {
     const features = syntheticFeatures();
     const fingerprint = computeFingerprint(features);

@@ -154,6 +154,16 @@ describe("export UI contract", () => {
     expect(loadPresetsBody).toContain("return [];");
   });
 
+  it("popup and demo route storage reads and writes through non-fatal adapters", () => {
+    const popup = read("src/ui/popup.ts");
+    const demo = read("demo/demo.ts");
+
+    expect(popup).toContain("readStorageOrAsync(");
+    expect(popup).toContain("tryStorageWriteAsync(");
+    expect(demo).toContain("readStorageOr(");
+    expect(demo).toContain("tryStorageWrite(");
+  });
+
   it("demo stops and hides runtime panels before extracting page features", () => {
     const source = read("demo/demo.ts");
     const analyzeBody = source.match(/function analyze\(\) \{([\s\S]*?)\n\}/)?.[1] ?? "";

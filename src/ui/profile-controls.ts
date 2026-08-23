@@ -1,4 +1,5 @@
 import { BUILTIN_MAPPING_PROFILES, DEFAULT_MAPPING_PROFILE, resolveMappingProfile } from "../mapping/mapping-profile.js";
+import { hash64hex } from "../mapping/deterministic-seed.js";
 import type { MappingProfile, MappingProfileInput, PageCharacter, WsePreset } from "../shared/types.js";
 
 export const PROFILE_CHARACTER_ORDER: readonly PageCharacter[] = ["content", "navigation", "media", "form"];
@@ -106,6 +107,40 @@ export function trimPresetLabel(value: string): string {
   return value.trim().slice(0, 48);
 }
 
+export function readStorageOr<T>(read: () => T, fallback: T): T {
+  try {
+    return read();
+  } catch {
+    return fallback;
+  }
+}
+
+export async function readStorageOrAsync<T>(read: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await read();
+  } catch {
+    return fallback;
+  }
+}
+
+export function tryStorageWrite(write: () => void): boolean {
+  try {
+    write();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function tryStorageWriteAsync(write: () => Promise<void>): Promise<boolean> {
+  try {
+    await write();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function presetIdFromLabel(label: string): string {
   const normalized = label
     .toLowerCase()
@@ -113,5 +148,5 @@ export function presetIdFromLabel(label: string): string {
     .replace(/^-+|-+$/g, "")
     .slice(0, 32);
 
-  return normalized || "preset";
+  return normalized || `preset-${hash64hex(label.trim())}`;
 }

@@ -95,6 +95,21 @@ function normalizeMappingProfile(value: unknown): MappingProfile | null {
     return null;
   }
 
+  if (record.label !== undefined && typeof record.label !== "string") {
+    return null;
+  }
+
+  if (record.description !== undefined && typeof record.description !== "string") {
+    return null;
+  }
+
+  if (
+    record.characterBias !== undefined &&
+    (!record.characterBias || typeof record.characterBias !== "object" || Array.isArray(record.characterBias))
+  ) {
+    return null;
+  }
+
   const resolved = resolveMappingProfile(record);
   return resolved.id === record.id ? resolved : null;
 }
@@ -109,7 +124,7 @@ export function resolveTuningOptions(value?: Partial<TuningOptions>): TuningOpti
   };
 }
 
-export function normalizePreset(value: unknown): WsePreset | null {
+function normalizePresetValue(value: unknown): WsePreset | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
   }
@@ -145,7 +160,15 @@ export function normalizePreset(value: unknown): WsePreset | null {
   };
 }
 
-export function readPresetEnvelope(value: unknown): WsePreset[] {
+export function normalizePreset(value: unknown): WsePreset | null {
+  try {
+    return normalizePresetValue(value);
+  } catch {
+    return null;
+  }
+}
+
+function readPresetEnvelopeValue(value: unknown): WsePreset[] {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return [];
   }
@@ -163,6 +186,14 @@ export function readPresetEnvelope(value: unknown): WsePreset[] {
     }
   }
   return presets;
+}
+
+export function readPresetEnvelope(value: unknown): WsePreset[] {
+  try {
+    return readPresetEnvelopeValue(value);
+  } catch {
+    return [];
+  }
 }
 
 export function upsertPreset(list: readonly WsePreset[], preset: WsePreset): WsePreset[] {

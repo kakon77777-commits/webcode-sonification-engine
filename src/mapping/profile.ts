@@ -11,7 +11,7 @@ import type {
 } from "../shared/types.js";
 import { DEFAULT_TUNING } from "../shared/types.js";
 import { clamp, mixSeed, mulberry32 } from "./deterministic-seed.js";
-import { mappingProfileHash } from "./mapping-profile.js";
+import { mappingProfileHash, resolveMappingProfile } from "./mapping-profile.js";
 import { normalizeFeatures, type NormalizedFeatures } from "./normalize.js";
 import { chooseOrchestration, type Orchestration } from "./orchestration.js";
 
@@ -141,7 +141,7 @@ export function buildExplain(
   norm: NormalizedFeatures,
   profile: Pick<MusicProfile, "key" | "keyName" | "scale" | "bpm" | "lengthSec">,
   orchestration: Orchestration,
-  mappingProfile: MappingProfile
+  mappingProfile: MappingProfile = resolveMappingProfile()
 ): ExplainItem[] {
   const items: ExplainItem[] = [
     {
@@ -227,8 +227,9 @@ export function deriveProfile(
   features: PageFeatures,
   fingerprint: PageFingerprint,
   options: GenerateOptions,
-  mappingProfile: MappingProfile
+  mappingProfile?: MappingProfile
 ): MusicProfile {
+  const resolvedMappingProfile = mappingProfile ?? resolveMappingProfile(options.mappingProfile);
   const norm = normalizeFeatures(features);
   const tuning = options.tuning ?? DEFAULT_TUNING;
   const seed = mixSeed(fingerprint.seed, options.variation);
@@ -239,7 +240,7 @@ export function deriveProfile(
   const scale = deriveScale(norm, seed);
   const bpm = deriveBpm(norm, options.style, tuning.tempoShift);
   const lengthSec = deriveLengthSec(norm);
-  const orchestration = chooseOrchestration(norm, options.style, mappingProfile);
+  const orchestration = chooseOrchestration(norm, options.style, resolvedMappingProfile);
 
   const barDur = (60 / bpm) * 4;
   const barCount = Math.max(4, Math.round(lengthSec / barDur));
@@ -262,9 +263,9 @@ export function deriveProfile(
     barCount: actualBars,
     sections,
     character: orchestration.character,
-    mappingProfileId: mappingProfile.id,
-    mappingProfileLabel: mappingProfile.label,
-    mappingProfileHash: mappingProfileHash(mappingProfile),
-    explain: buildExplain(features, norm, partial, orchestration, mappingProfile),
+    mappingProfileId: resolvedMappingProfile.id,
+    mappingProfileLabel: resolvedMappingProfile.label,
+    mappingProfileHash: mappingProfileHash(resolvedMappingProfile),
+    explain: buildExplain(features, norm, partial, orchestration, resolvedMappingProfile),
   };
 }

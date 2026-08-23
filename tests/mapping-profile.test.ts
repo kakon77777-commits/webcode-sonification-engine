@@ -104,6 +104,52 @@ describe("mapping profile contract", () => {
     });
   });
 
+  it("defensively resolves malformed runtime metadata without changing omitted-versus-empty text semantics", () => {
+    const malformedInputs = [
+      null,
+      42,
+      ["balanced"],
+      { version: "1", id: "content-forward" },
+      { id: { value: "content-forward" } },
+    ];
+
+    for (const input of malformedInputs) {
+      expect(() => resolveMappingProfile(input as never)).not.toThrow();
+      expect(resolveMappingProfile(input as never).id).toBe("balanced");
+    }
+
+    const hostile = new Proxy({}, {
+      get() {
+        throw new Error("hostile profile getter");
+      },
+    });
+    expect(resolveMappingProfile(hostile as never)).toEqual(resolveMappingProfile());
+
+    expect(resolveMappingProfile({
+      id: "content-forward",
+      label: 17,
+      description: { text: "unsafe" },
+      characterBias: "not-an-object",
+    } as never)).toEqual({
+      version: 1,
+      id: "content-forward",
+      label: "Content-forward",
+      description: "Emphasize text and article structure.",
+      characterBias: { content: 1.25, navigation: 0.85, media: 0.85, form: 0.85 },
+    });
+
+    expect(resolveMappingProfile({
+      id: "content-forward",
+      label: "   ",
+      description: "\t",
+      characterBias: { content: { value: 1.25 }, navigation: "high" },
+    } as never)).toMatchObject({
+      label: "",
+      description: "",
+      characterBias: { content: 1, navigation: 1, media: 1, form: 1 },
+    });
+  });
+
   it("returns fresh objects each time", () => {
     const a = resolveMappingProfile();
     const b = resolveMappingProfile();

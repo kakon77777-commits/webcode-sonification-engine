@@ -28,7 +28,9 @@ import {
   PROFILE_CHARACTER_ORDER,
   profileBiasFromValues,
   profileBiasToSliderValues,
+  readStorageOrAsync,
   trimPresetLabel,
+  tryStorageWriteAsync,
 } from "./profile-controls.js";
 
 /**
@@ -398,14 +400,18 @@ async function analyzeAndVisualize(): Promise<void> {
     lastScore = score;
     await chrome.runtime.sendMessage({ type: "WSE_STOP" });
     if (lastTabId !== null) detachTrackers(lastTabId);
-    await chrome.storage.local.set({
+    const payloadStored = await tryStorageWriteAsync(() => chrome.storage.local.set({
       wseVizPayload: {
         score,
         tokens: features.tokens,
         url: features.url,
         tuning: currentTuning(),
       },
-    });
+    }));
+    if (!payloadStored) {
+      setStatus("Visualizer unavailable · local storage write failed.");
+      return;
+    }
     await chrome.tabs.create({ url: chrome.runtime.getURL("visualizer.html") });
     window.close();
   } catch (err) {
@@ -454,21 +460,21 @@ async function exportCurrentScore(): Promise<void> {
   }
 }
 
-async function savePresetList(): Promise<void> {
-  await chrome.storage.local.set({
-    [PRESET_STORAGE_KEY]: serializePresetEnvelope(presets),
-  });
+async function savePresetList(nextPresets: readonly WsePreset[] = presets): Promise<boolean> {
+  return tryStorageWriteAsync(() => chrome.storage.local.set({
+    [PRESET_STORAGE_KEY]: serializePresetEnvelope(nextPresets),
+  }));
 }
 
-async function saveSettings(): Promise<void> {
-  await chrome.storage.local.set({
+async function saveSettings(): Promise<boolean> {
+  return tryStorageWriteAsync(() => chrome.storage.local.set({
     style: styleSel.value,
     mode: modeSel.value,
     playback: playbackSel.value,
     tuning: currentTuning(),
     mappingProfile: currentMappingProfile(),
     mappingProfileSelection: mappingProfileSel.value,
-  });
+  }));
 }
 
 async function handleProfileSelectionChange(): Promise<void> {
@@ -512,12 +518,21 @@ async function handleSavePreset(): Promise<void> {
     tuning: currentTuning(),
   };
 
-  presets = upsertPreset(presets, preset);
+  const nextPresets = upsertPreset(presets, preset);
+  if (!(await savePresetList(nextPresets))) {
+    setStatus("Preset not saved · local storage unavailable.");
+    return;
+  }
+
+  presets = nextPresets;
   populateProfileOptions(`preset:${preset.id}`);
   presetNameInput.value = preset.label;
-  await savePresetList();
-  await saveSettings();
-  setStatus(`Preset saved · ${preset.label}`);
+  const settingsSaved = await saveSettings();
+  setStatus(
+    settingsSaved
+      ? `Preset saved · ${preset.label}`
+      : `Preset saved · ${preset.label} · current selection not persisted.`
+  );
 }
 
 function preferredSelectionAfterDelete(): string {
@@ -541,30 +556,31 @@ async function handleDeletePreset(): Promise<void> {
     return;
   }
 
-  presets = removePreset(presets, choice.preset.id);
+  const nextPresets = removePreset(presets, choice.preset.id);
+  if (!(await savePresetList(nextPresets))) {
+    setStatus("Preset not deleted · local storage unavailable.");
+    return;
+  }
+
+  presets = nextPresets;
   populateProfileOptions(preferredSelectionAfterDelete());
   deletePresetBtn.disabled = true;
-  await savePresetList();
-  await saveSettings();
-  setStatus(`Preset deleted · ${choice.preset.label}`);
+  const settingsSaved = await saveSettings();
+  setStatus(
+    settingsSaved
+      ? `Preset deleted · ${choice.preset.label}`
+      : `Preset deleted · ${choice.preset.label} · current selection not persisted.`
+  );
 }
 
 async function resetControls(): Promise<void> {
   applyDefaults();
-  await saveSettings();
-  setStatus("Defaults restored.");
+  const settingsSaved = await saveSettings();
+  setStatus(settingsSaved ? "Defaults restored." : "Defaults restored · not persisted.");
 }
 
 async function init(): Promise<void> {
-  const saved = (await chrome.storage.local.get([
-    "style",
-    "mode",
-    "playback",
-    "tuning",
-    "mappingProfile",
-    "mappingProfileSelection",
-    PRESET_STORAGE_KEY,
-  ])) as {
+  type SavedSettings = {
     style?: string;
     mode?: string;
     playback?: string;
@@ -573,6 +589,18 @@ async function init(): Promise<void> {
     mappingProfileSelection?: string;
     [PRESET_STORAGE_KEY]?: unknown;
   };
+  const saved = await readStorageOrAsync(
+    () => chrome.storage.local.get([
+      "style",
+      "mode",
+      "playback",
+      "tuning",
+      "mappingProfile",
+      "mappingProfileSelection",
+      PRESET_STORAGE_KEY,
+    ]) as Promise<SavedSettings>,
+    {} as SavedSettings
+  );
 
   presets = readPresetEnvelope(saved[PRESET_STORAGE_KEY]);
   populateProfileOptions(saved.mappingProfileSelection ?? DEFAULT_MAPPING_PROFILE.id);

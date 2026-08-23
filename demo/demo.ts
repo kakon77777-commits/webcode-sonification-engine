@@ -31,7 +31,9 @@ import {
   PROFILE_CHARACTER_ORDER,
   profileBiasFromValues,
   profileBiasToSliderValues,
+  readStorageOr,
   trimPresetLabel,
+  tryStorageWrite,
 } from "../src/ui/profile-controls.js";
 import { LAYER_COLORS, LAYER_LABELS, mountViz, type VizHandles } from "../src/viz/viz-core.js";
 
@@ -224,19 +226,24 @@ function applyDefaults(): void {
   applyBuiltinProfile(DEFAULT_MAPPING_PROFILE);
 }
 
-function persistPresets(): void {
-  window.localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(serializePresetEnvelope(presets)));
+function persistPresets(nextPresets: readonly WsePreset[] = presets): boolean {
+  return tryStorageWrite(() => {
+    window.localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(serializePresetEnvelope(nextPresets)));
+  });
 }
 
 function loadPresets(): WsePreset[] {
   try {
-    return readPresetEnvelope(JSON.parse(window.localStorage.getItem(PRESET_STORAGE_KEY) ?? "null"));
+    return readStorageOr(
+      () => readPresetEnvelope(JSON.parse(window.localStorage.getItem(PRESET_STORAGE_KEY) ?? "null")),
+      []
+    );
   } catch {
     return [];
   }
 }
 
-function saveSettings(): void {
+function saveSettings(): boolean {
   const settings = {
     style: ($("style") as HTMLSelectElement).value,
     mode: ($("mode") as HTMLSelectElement).value,
@@ -245,14 +252,16 @@ function saveSettings(): void {
     mappingProfile: currentMappingProfile(),
     mappingProfileSelection: mappingProfileSel.value,
   };
-  window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  return tryStorageWrite(() => {
+    window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  });
 }
 
 function loadSettings(): void {
   presets = loadPresets();
   populateProfileOptions(DEFAULT_MAPPING_PROFILE.id);
 
-  const raw = window.localStorage.getItem(SETTINGS_KEY);
+  const raw = readStorageOr(() => window.localStorage.getItem(SETTINGS_KEY), null);
   if (!raw) {
     applyDefaults();
     return;
@@ -530,11 +539,18 @@ for (const slider of Object.values(profileSliders)) {
     mode: ($("mode") as HTMLSelectElement).value as ModeName,
     tuning: currentTuning(),
   };
-  presets = upsertPreset(presets, preset);
-  persistPresets();
+  const nextPresets = upsertPreset(presets, preset);
+  if (!persistPresets(nextPresets)) {
+    out.textContent = "preset not saved · local storage unavailable";
+    return;
+  }
+
+  presets = nextPresets;
   populateProfileOptions(`preset:${preset.id}`);
-  saveSettings();
-  out.textContent = `preset saved · ${preset.label}`;
+  const settingsSaved = saveSettings();
+  out.textContent = settingsSaved
+    ? `preset saved · ${preset.label}`
+    : `preset saved · ${preset.label} · current selection not persisted`;
 });
 
 deletePresetBtn.addEventListener("click", () => {
@@ -543,11 +559,18 @@ deletePresetBtn.addEventListener("click", () => {
     out.textContent = "select a saved preset";
     return;
   }
-  presets = removePreset(presets, choice.preset.id);
-  persistPresets();
+  const nextPresets = removePreset(presets, choice.preset.id);
+  if (!persistPresets(nextPresets)) {
+    out.textContent = "preset not deleted · local storage unavailable";
+    return;
+  }
+
+  presets = nextPresets;
   populateProfileOptions(preferredSelectionAfterDelete());
-  saveSettings();
-  out.textContent = `preset deleted · ${choice.preset.label}`;
+  const settingsSaved = saveSettings();
+  out.textContent = settingsSaved
+    ? `preset deleted · ${choice.preset.label}`
+    : `preset deleted · ${choice.preset.label} · current selection not persisted`;
 });
 
 presetNameInput.addEventListener("change", () => {
@@ -603,8 +626,8 @@ for (const id of ["s-tempo", "s-density", "s-bright", "s-reverb", "s-low-end", "
 
 ($("tune-reset") as HTMLButtonElement).addEventListener("click", () => {
   applyDefaults();
-  saveSettings();
-  out.textContent = "defaults restored";
+  const settingsSaved = saveSettings();
+  out.textContent = settingsSaved ? "defaults restored" : "defaults restored · not persisted";
 });
 
 loadSettings();

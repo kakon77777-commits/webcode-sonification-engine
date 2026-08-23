@@ -377,6 +377,58 @@ describe("preset store contract", () => {
     expect(readPresetEnvelope(undefined)).toEqual([]);
   });
 
+  it("isolates hostile nested mapping-profile metadata from valid envelope entries", () => {
+    const hostileEntry = new Proxy({}, {
+      get() {
+        throw new Error("hostile preset getter");
+      },
+    });
+    const envelope = {
+      version: 1,
+      presets: [
+        rawPreset("before"),
+        hostileEntry,
+        rawPreset("bad-label", {
+          mappingProfile: { version: 1, id: "content-forward", label: { trim: "not callable" } },
+        }),
+        rawPreset("bad-description", {
+          mappingProfile: { version: 1, id: "media-forward", description: ["unsafe"] },
+        }),
+        rawPreset("bad-bias-container", {
+          mappingProfile: { version: 1, id: "form-forward", characterBias: "high" },
+        }),
+        rawPreset("bad-version-type", {
+          mappingProfile: { version: "1", id: "balanced" },
+        }),
+        rawPreset("after", {
+          mappingProfile: {
+            version: 1,
+            id: "navigation-forward",
+            label: "   ",
+            description: "\t",
+          },
+        }),
+      ],
+    };
+
+    expect(() => readPresetEnvelope(envelope)).not.toThrow();
+    expect(readPresetEnvelope(envelope).map((preset) => preset.id)).toEqual(["before", "after"]);
+    expect(readPresetEnvelope(envelope)[1]?.mappingProfile).toMatchObject({
+      id: "navigation-forward",
+      label: "",
+      description: "",
+    });
+    expect(normalizePreset(hostileEntry)).toBeNull();
+
+    const hostileEnvelope = new Proxy({}, {
+      get() {
+        throw new Error("hostile envelope getter");
+      },
+    });
+    expect(() => readPresetEnvelope(hostileEnvelope)).not.toThrow();
+    expect(readPresetEnvelope(hostileEnvelope)).toEqual([]);
+  });
+
   it("replaces duplicates by id, keeps stable order, and caps the newest twelve entries", () => {
     const seed = Array.from({ length: MAX_USER_PRESETS }, (_, index) =>
       normalizePreset({

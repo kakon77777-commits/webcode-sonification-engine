@@ -20,16 +20,21 @@ function freezeProfile(profile: MappingProfile): Readonly<MappingProfile> {
   return Object.freeze(profile);
 }
 
-function createCharacterBias(values: Partial<Record<PageCharacter, number>> = {}): Record<PageCharacter, number> {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function createCharacterBias(values: unknown = {}): Record<PageCharacter, number> {
+  const record = isRecord(values) ? values : {};
   return {
-    content: normalizeBias(values.content),
-    navigation: normalizeBias(values.navigation),
-    media: normalizeBias(values.media),
-    form: normalizeBias(values.form),
+    content: normalizeBias(record.content),
+    navigation: normalizeBias(record.navigation),
+    media: normalizeBias(record.media),
+    form: normalizeBias(record.form),
   };
 }
 
-function normalizeBias(value: number | undefined): number {
+function normalizeBias(value: unknown): number {
   if (!Number.isFinite(value)) {
     return DEFAULT_BIAS;
   }
@@ -38,8 +43,12 @@ function normalizeBias(value: number | undefined): number {
   return Math.min(MAX_BIAS, Math.max(MIN_BIAS, finiteValue));
 }
 
-function clampText(value: string | undefined, limit: number): string {
-  return (value ?? "").trim().slice(0, limit);
+function resolveDisplayText(value: unknown, fallback: string, limit: number): string {
+  if (value === undefined || typeof value !== "string") {
+    return fallback;
+  }
+
+  return value.trim().slice(0, limit);
 }
 
 function profileTemplate(
@@ -110,24 +119,40 @@ function cloneProfile(profile: MappingProfile): MappingProfile {
 }
 
 export function resolveMappingProfile(input?: MappingProfileInput): MappingProfile {
-  if (input?.version !== undefined && input.version !== MAPPING_PROFILE_VERSION) {
+  try {
+    if (input === undefined) {
+      return cloneProfile(DEFAULT_MAPPING_PROFILE);
+    }
+
+    if (!isRecord(input)) {
+      return cloneProfile(DEFAULT_MAPPING_PROFILE);
+    }
+
+    if (input.version !== undefined && input.version !== MAPPING_PROFILE_VERSION) {
+      return cloneProfile(DEFAULT_MAPPING_PROFILE);
+    }
+
+    if (input.id !== undefined && (typeof input.id !== "string" || !ID_PATTERN.test(input.id))) {
+      return cloneProfile(DEFAULT_MAPPING_PROFILE);
+    }
+
+    const id = typeof input.id === "string" ? input.id : DEFAULT_MAPPING_PROFILE.id;
+    const builtin = BUILTIN_BY_ID.get(id) ?? DEFAULT_MAPPING_PROFILE;
+    const characterBias =
+      input.characterBias === undefined || !isRecord(input.characterBias)
+        ? builtin.characterBias
+        : input.characterBias;
+
+    return {
+      version: MAPPING_PROFILE_VERSION,
+      id,
+      label: resolveDisplayText(input.label, builtin.label, LABEL_LIMIT),
+      description: resolveDisplayText(input.description, builtin.description, DESCRIPTION_LIMIT),
+      characterBias: createCharacterBias(characterBias),
+    };
+  } catch {
     return cloneProfile(DEFAULT_MAPPING_PROFILE);
   }
-
-  if (input?.id !== undefined && !ID_PATTERN.test(input.id)) {
-    return cloneProfile(DEFAULT_MAPPING_PROFILE);
-  }
-
-  const id = input?.id ?? DEFAULT_MAPPING_PROFILE.id;
-  const builtin = BUILTIN_BY_ID.get(id) ?? DEFAULT_MAPPING_PROFILE;
-
-  return {
-    version: MAPPING_PROFILE_VERSION,
-    id,
-    label: input?.label === undefined ? builtin.label : clampText(input.label, LABEL_LIMIT),
-    description: input?.description === undefined ? builtin.description : clampText(input.description, DESCRIPTION_LIMIT),
-    characterBias: createCharacterBias(input?.characterBias ?? builtin.characterBias),
-  };
 }
 
 export function canonicalMappingProfile(profile: MappingProfile): string {
