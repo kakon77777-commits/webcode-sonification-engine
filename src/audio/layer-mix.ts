@@ -15,16 +15,20 @@ export const LAYER_GAIN: Readonly<Record<NoteLayer, number>> = Object.freeze({
 
 export type LayerBusMap = Readonly<Record<NoteLayer, GainNode>>;
 
-function clampMixValue(value: number): number {
+function clampMixValue(value: number, fallback: number): number {
+  if (!Number.isFinite(value)) {
+    return fallback;
+  }
+
   return Math.min(1.25, Math.max(0, value));
 }
 
 export function resolveLayerMix(value?: Partial<LayerMixTuning>): LayerMixTuning {
   return {
-    lowEnd: clampMixValue(value?.lowEnd ?? DEFAULT_LAYER_MIX.lowEnd),
-    pad: clampMixValue(value?.pad ?? DEFAULT_LAYER_MIX.pad),
-    melody: clampMixValue(value?.melody ?? DEFAULT_LAYER_MIX.melody),
-    rhythm: clampMixValue(value?.rhythm ?? DEFAULT_LAYER_MIX.rhythm),
+    lowEnd: clampMixValue(value?.lowEnd ?? DEFAULT_LAYER_MIX.lowEnd, DEFAULT_LAYER_MIX.lowEnd),
+    pad: clampMixValue(value?.pad ?? DEFAULT_LAYER_MIX.pad, DEFAULT_LAYER_MIX.pad),
+    melody: clampMixValue(value?.melody ?? DEFAULT_LAYER_MIX.melody, DEFAULT_LAYER_MIX.melody),
+    rhythm: clampMixValue(value?.rhythm ?? DEFAULT_LAYER_MIX.rhythm, DEFAULT_LAYER_MIX.rhythm),
   };
 }
 

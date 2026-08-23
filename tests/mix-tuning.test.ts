@@ -31,6 +31,26 @@ describe("layer mix tuning", () => {
     });
   });
 
+  it("falls back to defaults for non-finite input", () => {
+    const invalid = {
+      lowEnd: Number.NaN,
+      pad: Number.POSITIVE_INFINITY,
+      melody: Number.NEGATIVE_INFINITY,
+      rhythm: Number.NaN,
+    };
+
+    const first = resolveLayerMix(invalid);
+    const second = resolveLayerMix(invalid);
+
+    expect(first).toEqual(DEFAULT_LAYER_MIX);
+    expect(second).toEqual(first);
+    for (const value of Object.values(first)) {
+      expect(Number.isFinite(value)).toBe(true);
+      expect(value).toBeGreaterThanOrEqual(0);
+      expect(value).toBeLessThanOrEqual(1.25);
+    }
+  });
+
   it("returns a fresh object on every resolution", () => {
     const resolved = resolveLayerMix();
     resolved.pad = 0.1;
