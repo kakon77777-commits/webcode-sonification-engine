@@ -273,6 +273,18 @@ describe("preset store contract", () => {
     }
   });
 
+  it("rejects exact PageFeatures and Score field spellings", () => {
+    expect(normalizePreset({
+      ...rawPreset("pascal-page-features"),
+      PageFeatures: {},
+    })).toBeNull();
+
+    expect(normalizePreset({
+      ...rawPreset("pascal-score"),
+      Score: {},
+    })).toBeNull();
+  });
+
   it("keeps valid entries when the envelope contains malformed neighbors", () => {
     expect(readPresetEnvelope({
       version: 1,

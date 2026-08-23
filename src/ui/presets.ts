@@ -20,9 +20,8 @@ const MODE_NAME_SET = new Set<string>(MODE_NAMES);
 const PRESET_VERSION = 1;
 const PRESET_ID_PATTERN = /^[a-z0-9][a-z0-9_-]{0,31}$/;
 const PRESET_LABEL_LIMIT = 48;
-const LOCAL_ONLY_FORBIDDEN_KEYS = [
+const LOCAL_ONLY_FORBIDDEN_KEYS = new Set([
   "url",
-  "URL",
   "href",
   "query",
   "queryString",
@@ -38,7 +37,6 @@ const LOCAL_ONLY_FORBIDDEN_KEYS = [
   "pageContent",
   "pageText",
   "dom",
-  "DOM",
   "pageFeatures",
   "domSnapshot",
   "tokens",
@@ -52,7 +50,7 @@ const LOCAL_ONLY_FORBIDDEN_KEYS = [
   "midi",
   "renderedAudio",
   "blob",
-] as const;
+].map((key) => key.toLowerCase()));
 
 function clampNumber(value: unknown, fallback: number, min: number, max: number): number {
   if (!Number.isFinite(value)) {
@@ -72,7 +70,7 @@ function trimBoundedString(value: unknown, limit: number): string | null {
 }
 
 function hasForbiddenLocalFields(value: Record<string, unknown>): boolean {
-  return LOCAL_ONLY_FORBIDDEN_KEYS.some((key) => key in value);
+  return Object.keys(value).some((key) => LOCAL_ONLY_FORBIDDEN_KEYS.has(key.toLowerCase()));
 }
 
 function normalizeStyleName(value: unknown): StyleName | null {
