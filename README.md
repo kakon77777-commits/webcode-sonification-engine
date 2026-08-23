@@ -61,7 +61,9 @@ Every sustained/melodic voice has a **filter envelope** — brightness that move
 
 ### Customize sliders
 
-The popup exposes four deterministic tuning sliders — **Tempo** (±30 BPM), **Density** (50–150 %), **Brightness**, **Reverb**. They are part of the mapping profile Θ, persisted across sessions, and never break reproducibility: same page + same sliders → same music.
+The popup exposes eight deterministic local controls. Four shape the score itself — **Tempo** (±30 BPM), **Density** (50–150 %), **Brightness**, **Reverb** — and four rebalance the rendered layer buses — **Low End** (`72%` default), **Pad** (`100%`), **Melody** (`100%`), **Rhythm** (`90%`). All eight are saved locally in `chrome.storage.local`, restored deterministically across sessions, and never send data anywhere.
+
+The mix controls do **not** rewrite the webpage analysis, fingerprint, explanation list, song form, or note-event structure. They only change layer gain at playback/export render time: same page + same structural tuning still yields the same score, while different mix values produce different local renders of that score.
 
 ### Music grammar guardrails
 
@@ -83,10 +85,10 @@ Never the URL alone — if a site's structure changes, its music changes too. **
 
 ### Export
 
-**Export** downloads the current score entirely client-side. The standalone web demo's WAV/MIDI export path is browser-verified; the popup and visualizer tab expose the same format controls through the shared export contract. The format selector defaults to **WAV**:
+**Export** downloads the current score entirely client-side. The popup and visualizer tab expose the same format controls through the shared export contract, and the format selector defaults to **WAV**:
 
-- **WAV** renders the score offline through the identical synthesis graph you just heard — not a separate export path — and downloads a standard 16-bit PCM `.wav` file.
-- **MIDI** encodes the same deterministic score as a `.mid` file with stable layer tracks: `WSE`, `WSE pad`, `WSE bass`, `WSE melody`, `WSE arp`, `WSE bell`, and `WSE perc`.
+- **WAV** renders the score offline through the identical synthesis graph you just heard — not a separate export path — and downloads a standard 16-bit PCM `.wav` file. The current **Low End / Pad / Melody / Rhythm** mix is applied to that render.
+- **MIDI** encodes the same deterministic score as a `.mid` file with stable layer tracks: `WSE`, `WSE pad`, `WSE bass`, `WSE melody`, `WSE arp`, `WSE bell`, and `WSE perc`. Mix-only changes do not alter the score or MIDI bytes.
 
 Both formats use deterministic `wse-<fingerprint>-<style>` filenames, and the export status text reports the completed WAV or MIDI download. Additional export formats, custom mapping profiles, and sibling-site links remain separate future plans.
 
