@@ -39,8 +39,6 @@ import {
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
-const DEFAULT_STYLE: StyleName = "ambient";
-const DEFAULT_MODE: ModeName = "hybrid";
 const CUSTOM_PROFILE_DESCRIPTION = "User-adjusted structural emphasis.";
 
 const analyzeBtn = $<HTMLButtonElement>("analyze");
@@ -226,8 +224,6 @@ function applyPreset(preset: WsePreset): void {
 }
 
 function applyDefaults(): void {
-  styleSel.value = DEFAULT_STYLE;
-  modeSel.value = DEFAULT_MODE;
   applyTuning({
     ...DEFAULT_TUNING,
     mix: DEFAULT_LAYER_MIX,

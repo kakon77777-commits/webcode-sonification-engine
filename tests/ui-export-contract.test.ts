@@ -90,11 +90,17 @@ describe("export UI contract", () => {
 
     const profile = document.querySelector<HTMLSelectElement>("select#mapping-profile");
     expect(profile).not.toBeNull();
+    const profileLabel = document.querySelector<HTMLLabelElement>('label[for="mapping-profile"]');
+    expect(profileLabel).not.toBeNull();
+    expect(profileLabel?.textContent?.trim()).toBe("Profile");
 
     const presetName = document.querySelector<HTMLInputElement>("input#preset-name");
     expect(presetName).not.toBeNull();
     expect(presetName?.getAttribute("type")).toBe("text");
     expect(presetName?.getAttribute("maxlength")).toBe("48");
+    const presetNameLabel = document.querySelector<HTMLLabelElement>('label[for="preset-name"]');
+    expect(presetNameLabel).not.toBeNull();
+    expect(presetNameLabel?.textContent?.trim()).toBe("Preset");
 
     const savePreset = document.querySelector<HTMLButtonElement>("button#save-preset");
     expect(savePreset).not.toBeNull();
@@ -127,6 +133,25 @@ describe("export UI contract", () => {
     expect(document.querySelector("#explain-box, #out")).not.toBeNull();
     expect(document.querySelector("#export")).not.toBeNull();
     expect(document.querySelector("#status, #export-status")).not.toBeNull();
+  });
+
+  it.each(uiSources)("%s reset preserves the current style and mode selections", (_name, path) => {
+    const source = read(path);
+    const resetBody = source.match(/function applyDefaults\(\): void \{([\s\S]*?)\n\}/)?.[1] ?? "";
+
+    expect(resetBody).toContain("applyTuning(");
+    expect(resetBody).toContain("applyBuiltinProfile(DEFAULT_MAPPING_PROFILE)");
+    expect(resetBody).not.toMatch(/style[^\n]*\.value/);
+    expect(resetBody).not.toMatch(/mode[^\n]*\.value/);
+  });
+
+  it("demo preset loading fails closed when the preset storage JSON is malformed", () => {
+    const source = read("demo/demo.ts");
+    const loadPresetsBody = source.match(/function loadPresets\(\): WsePreset\[\] \{([\s\S]*?)\n\}/)?.[1] ?? "";
+
+    expect(loadPresetsBody).toContain("JSON.parse");
+    expect(loadPresetsBody).toContain("try {");
+    expect(loadPresetsBody).toContain("return [];");
   });
 
   it.each(uiSources)("%s source wires mappingProfile through GenerateOptions", (_name, path) => {

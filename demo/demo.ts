@@ -42,8 +42,6 @@ type DriveMode = "auto" | "scroll" | "live";
  * Exposes window.__wse for automated verification.
  */
 
-const DEFAULT_STYLE: StyleName = "ambient";
-const DEFAULT_MODE: ModeName = "hybrid";
 const CUSTOM_PROFILE_DESCRIPTION = "User-adjusted structural emphasis.";
 const SETTINGS_KEY = "wse-demo-settings-v1";
 
@@ -219,8 +217,6 @@ function applyPreset(preset: WsePreset): void {
 }
 
 function applyDefaults(): void {
-  ($("style") as HTMLSelectElement).value = DEFAULT_STYLE;
-  ($("mode") as HTMLSelectElement).value = DEFAULT_MODE;
   applyTuning({
     ...DEFAULT_TUNING,
     mix: DEFAULT_LAYER_MIX,
@@ -230,6 +226,14 @@ function applyDefaults(): void {
 
 function persistPresets(): void {
   window.localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(serializePresetEnvelope(presets)));
+}
+
+function loadPresets(): WsePreset[] {
+  try {
+    return readPresetEnvelope(JSON.parse(window.localStorage.getItem(PRESET_STORAGE_KEY) ?? "null"));
+  } catch {
+    return [];
+  }
 }
 
 function saveSettings(): void {
@@ -245,7 +249,7 @@ function saveSettings(): void {
 }
 
 function loadSettings(): void {
-  presets = readPresetEnvelope(JSON.parse(window.localStorage.getItem(PRESET_STORAGE_KEY) ?? "null"));
+  presets = loadPresets();
   populateProfileOptions(DEFAULT_MAPPING_PROFILE.id);
 
   const raw = window.localStorage.getItem(SETTINGS_KEY);
