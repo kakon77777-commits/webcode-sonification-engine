@@ -1,14 +1,17 @@
 import type {
   ExplainItem,
   GenerateOptions,
+  MappingProfile,
   MusicProfile,
   PageFeatures,
   PageFingerprint,
+  PageCharacter,
   ScaleName,
   SectionPlan,
 } from "../shared/types.js";
 import { DEFAULT_TUNING } from "../shared/types.js";
 import { clamp, mixSeed, mulberry32 } from "./deterministic-seed.js";
+import { mappingProfileHash } from "./mapping-profile.js";
 import { normalizeFeatures, type NormalizedFeatures } from "./normalize.js";
 import { chooseOrchestration, type Orchestration } from "./orchestration.js";
 
@@ -122,14 +125,30 @@ const CHARACTER_LABEL: Record<string, string> = {
   form: "form-led (inputs & controls)",
 };
 
+const CHARACTER_ORDER: readonly PageCharacter[] = ["content", "navigation", "media", "form"];
+
+function formatBiasPct(value: number): string {
+  return `${Math.round(value * 100)}%`;
+}
+
+function describeMappingProfile(profile: MappingProfile): string {
+  return CHARACTER_ORDER.map((character) => `${character} ${formatBiasPct(profile.characterBias[character])}`).join(", ");
+}
+
 /** Explain Mode (§50): why does this page sound like this? */
 export function buildExplain(
   f: PageFeatures,
   norm: NormalizedFeatures,
   profile: Pick<MusicProfile, "key" | "keyName" | "scale" | "bpm" | "lengthSec">,
-  orchestration: Orchestration
+  orchestration: Orchestration,
+  mappingProfile: MappingProfile
 ): ExplainItem[] {
   const items: ExplainItem[] = [
+    {
+      feature: "Mapping profile",
+      value: mappingProfile.label,
+      effect: describeMappingProfile(mappingProfile),
+    },
     {
       feature: "Structure character",
       value: CHARACTER_LABEL[orchestration.character],
@@ -207,7 +226,8 @@ export function buildExplain(
 export function deriveProfile(
   features: PageFeatures,
   fingerprint: PageFingerprint,
-  options: GenerateOptions
+  options: GenerateOptions,
+  mappingProfile: MappingProfile
 ): MusicProfile {
   const norm = normalizeFeatures(features);
   const tuning = options.tuning ?? DEFAULT_TUNING;
@@ -219,7 +239,7 @@ export function deriveProfile(
   const scale = deriveScale(norm, seed);
   const bpm = deriveBpm(norm, options.style, tuning.tempoShift);
   const lengthSec = deriveLengthSec(norm);
-  const orchestration = chooseOrchestration(norm, options.style);
+  const orchestration = chooseOrchestration(norm, options.style, mappingProfile);
 
   const barDur = (60 / bpm) * 4;
   const barCount = Math.max(4, Math.round(lengthSec / barDur));
@@ -242,6 +262,9 @@ export function deriveProfile(
     barCount: actualBars,
     sections,
     character: orchestration.character,
-    explain: buildExplain(features, norm, partial, orchestration),
+    mappingProfileId: mappingProfile.id,
+    mappingProfileLabel: mappingProfile.label,
+    mappingProfileHash: mappingProfileHash(mappingProfile),
+    explain: buildExplain(features, norm, partial, orchestration, mappingProfile),
   };
 }

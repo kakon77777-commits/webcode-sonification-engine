@@ -1,4 +1,5 @@
-import type { InstrumentName, PageCharacter, StyleName } from "../shared/types.js";
+import type { InstrumentName, MappingProfile, PageCharacter, StyleName } from "../shared/types.js";
+import { DEFAULT_MAPPING_PROFILE } from "./mapping-profile.js";
 import type { NormalizedFeatures } from "./normalize.js";
 
 /**
@@ -11,12 +12,15 @@ import type { NormalizedFeatures } from "./normalize.js";
  * even in the same style. Deterministic: no RNG, features only.
  */
 
-export function detectCharacter(norm: NormalizedFeatures): PageCharacter {
+export function detectCharacter(
+  norm: NormalizedFeatures,
+  profile: MappingProfile = DEFAULT_MAPPING_PROFILE
+): PageCharacter {
   const entries: Array<[PageCharacter, number]> = [
-    ["content", norm.contentLean],
-    ["navigation", norm.navLean],
-    ["media", norm.mediaLean],
-    ["form", norm.formLean],
+    ["content", norm.contentLean * profile.characterBias.content],
+    ["navigation", norm.navLean * profile.characterBias.navigation],
+    ["media", norm.mediaLean * profile.characterBias.media],
+    ["form", norm.formLean * profile.characterBias.form],
   ];
   // Stable priority on ties: content > navigation > media > form.
   let best = entries[0];
@@ -69,8 +73,12 @@ const PALETTES: Record<StyleName, StylePalette> = {
   },
 };
 
-export function chooseOrchestration(norm: NormalizedFeatures, style: StyleName): Orchestration {
-  const character = detectCharacter(norm);
+export function chooseOrchestration(
+  norm: NormalizedFeatures,
+  style: StyleName,
+  profile: MappingProfile = DEFAULT_MAPPING_PROFILE
+): Orchestration {
+  const character = detectCharacter(norm, profile);
   const palette = PALETTES[style];
   return {
     melody: palette.melody[character],

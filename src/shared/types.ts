@@ -205,6 +205,9 @@ export interface MusicProfile {
   sections: SectionPlan[];
   /** Dominant structural family of the page — decides the orchestration lean. */
   character: PageCharacter;
+  mappingProfileId?: string;
+  mappingProfileLabel?: string;
+  mappingProfileHash?: string;
   /** Human-readable mapping explanations ("Why does this page sound like this?"). */
   explain: ExplainItem[];
 }
@@ -243,6 +246,7 @@ export interface GenerateOptions {
   variation: number;
   /** Slider tuning; defaults to DEFAULT_TUNING when omitted. */
   tuning?: TuningOptions;
+  mappingProfile?: MappingProfileInput;
 }
 
 /** Everything the visualizer page needs, handed over via chrome.storage.local. */

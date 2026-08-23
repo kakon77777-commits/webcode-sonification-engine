@@ -1,5 +1,6 @@
 export { computeFingerprint, canonicalFeatureString } from "./fingerprint.js";
 export { normalizeFeatures } from "./normalize.js";
+export type { MappingProfile, MappingProfileInput } from "../shared/types.js";
 export { deriveProfile, SCALE_INTERVALS } from "./profile.js";
 export { generateScore } from "./default-map.js";
 export { quantizePitch, quantizeTime, degreeToMidi, scalePitchClasses, clampMidi } from "./quantize.js";

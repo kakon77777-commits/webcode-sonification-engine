@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { computeFingerprint } from "../src/mapping/fingerprint.js";
 import { generateScore } from "../src/mapping/default-map.js";
+import { resolveMappingProfile } from "../src/mapping/mapping-profile.js";
 import { normalizeFeatures, type NormalizedFeatures } from "../src/mapping/normalize.js";
 import { chooseOrchestration, detectCharacter, euclid } from "../src/mapping/orchestration.js";
 import { scalePitchClasses } from "../src/mapping/quantize.js";
@@ -43,6 +44,38 @@ describe("Orchestra by Web Architecture (§17): structure picks the voices", () 
       })
     );
     expect(melodies.size).toBeGreaterThanOrEqual(2);
+  });
+
+  it("applies mapping-profile character bias before choosing the existing style palette voices", () => {
+    const norm: NormalizedFeatures = {
+      ...normWithCharacter("navLean"),
+      contentLean: 0.22,
+      navLean: 0.28,
+      mediaLean: 0.1,
+      formLean: 0.05,
+    };
+
+    expect(detectCharacter(norm)).toBe("navigation");
+    expect(chooseOrchestration(norm, "ambient")).toMatchObject({
+      character: "navigation",
+      melody: "xiao",
+      arp: "pluck",
+      bell: "mallet",
+    });
+
+    const profile = resolveMappingProfile({
+      id: "reader-focus",
+      label: "Reader Focus",
+      characterBias: { content: 1.25, navigation: 0.85, media: 0.85, form: 0.85 },
+    });
+
+    expect(detectCharacter(norm, profile)).toBe("content");
+    expect(chooseOrchestration(norm, "ambient", profile)).toMatchObject({
+      character: "content",
+      melody: "epiano",
+      arp: "pluck",
+      bell: "bell",
+    });
   });
 
   it("orchestration choice is deterministic and reflected in the score", () => {

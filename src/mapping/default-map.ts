@@ -13,6 +13,7 @@ import type {
 } from "../shared/types.js";
 import { DEFAULT_TUNING } from "../shared/types.js";
 import { mixSeed, mulberry32, pick, randInt, clamp, type Rng } from "./deterministic-seed.js";
+import { resolveMappingProfile } from "./mapping-profile.js";
 import { normalizeFeatures } from "./normalize.js";
 import { deriveProfile } from "./profile.js";
 import { chooseOrchestration, euclid } from "./orchestration.js";
@@ -215,7 +216,8 @@ export function generateScore(
   fingerprint: PageFingerprint,
   options: GenerateOptions
 ): Score {
-  const profile = deriveProfile(features, fingerprint, options);
+  const mappingProfile = resolveMappingProfile(options.mappingProfile);
+  const profile = deriveProfile(features, fingerprint, options, mappingProfile);
   const norm = normalizeFeatures(features);
   const tuning = options.tuning ?? DEFAULT_TUNING;
   const seed = mixSeed(fingerprint.seed, options.variation);
@@ -225,7 +227,7 @@ export function generateScore(
   const mode = options.mode;
 
   // §17: the page's structural character picks the actual voices.
-  const orch = chooseOrchestration(norm, options.style);
+  const orch = chooseOrchestration(norm, options.style, mappingProfile);
   const melodyInstr = orch.melody;
   const arpInstr = orch.arp;
   const bellInstr = orch.bell;
