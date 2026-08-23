@@ -3,6 +3,7 @@ import { LookaheadScheduler } from "./scheduler.js";
 import { ScrollScheduler } from "./scroll-scheduler.js";
 import { playNote, type VoiceDestinations } from "./instruments.js";
 import { buildMasterGraph } from "./graph.js";
+import type { LayerMixTuning } from "./layer-mix.js";
 import {
   buildAmbientBed,
   LIVE_MAX_EVENTS_PER_SECOND,
@@ -28,6 +29,8 @@ export interface PlayOptions {
   brightness?: number;
   /** 0…1 reverb amount (0.5 = neutral). */
   reverb?: number;
+  /** Optional per-layer gain tuning shared with offline export. */
+  mix?: Partial<LayerMixTuning>;
   onEnded?: () => void;
 }
 
@@ -56,6 +59,7 @@ export class WseAudioEngine {
     const { master, dest } = buildMasterGraph(ctx, {
       brightness: opts.brightness,
       reverb: opts.reverb,
+      mix: opts.mix,
       seed: score.fingerprint.seed,
     });
     this.master = master;
@@ -94,6 +98,7 @@ export class WseAudioEngine {
     const { master, dest } = buildMasterGraph(ctx, {
       brightness: opts.brightness,
       reverb: opts.reverb,
+      mix: opts.mix,
       seed: score.fingerprint.seed,
     });
     this.master = master;
@@ -130,6 +135,7 @@ export class WseAudioEngine {
     const { master, dest } = buildMasterGraph(ctx, {
       brightness: opts.brightness,
       reverb: opts.reverb,
+      mix: opts.mix,
       seed: score.fingerprint.seed,
     });
     this.master = master;

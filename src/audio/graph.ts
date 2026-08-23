@@ -1,6 +1,6 @@
 import { setNoiseSeed, type VoiceDestinations } from "./instruments.js";
 import { dampedNoiseSamples } from "./impulse.js";
-import { createLayerBuses, type LayerBusMap } from "./layer-mix.js";
+import { createLayerBuses, type LayerBusMap, type LayerMixTuning } from "./layer-mix.js";
 
 /**
  * Shared master audio graph: master gain → compressor → destination, plus a
@@ -14,6 +14,8 @@ export interface MasterGraphOptions {
   brightness?: number;
   /** 0…1 reverb amount (0.5 = neutral). */
   reverb?: number;
+  /** Optional per-layer gain tuning shared by live and offline render paths. */
+  mix?: Partial<LayerMixTuning>;
   /**
    * Seeds the reverb impulse response. Pass the score's fingerprint seed so
    * replaying or exporting the same score renders byte-identical audio —
@@ -110,7 +112,7 @@ export function buildMasterGraph(ctx: BaseAudioContext, opts: MasterGraphOptions
   reverb.connect(reverbReturn);
   reverbReturn.connect(master);
 
-  const layerBuses = createLayerBuses(ctx, master);
+  const layerBuses = createLayerBuses(ctx, master, opts.mix);
   const dest: VoiceDestinations = {
     dry: master,
     reverb,

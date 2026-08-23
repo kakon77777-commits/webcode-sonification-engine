@@ -1,6 +1,7 @@
 import type { Score } from "../shared/types.js";
 import { buildMasterGraph } from "./graph.js";
 import { playNote } from "./instruments.js";
+import type { LayerMixTuning } from "./layer-mix.js";
 
 /**
  * Offline WAV render (v0.4, §52 Export): schedules the exact same score
@@ -24,6 +25,8 @@ export interface RenderOptions {
   brightness?: number;
   /** 0…1 reverb amount (0.5 = neutral). */
   reverb?: number;
+  /** Optional per-layer gain tuning shared with live playback. */
+  mix?: Partial<LayerMixTuning>;
   /** Output sample rate. Defaults to 44100 (standard WAV). */
   sampleRate?: number;
 }
@@ -38,6 +41,7 @@ export async function renderScoreOffline(score: Score, opts: RenderOptions = {})
   const { dest } = buildMasterGraph(ctx, {
     brightness: opts.brightness,
     reverb: opts.reverb,
+    mix: opts.mix,
     seed: score.fingerprint.seed,
   });
   for (const ev of score.events) {

@@ -1,5 +1,5 @@
 import type { DriveMode, PlaybackState } from "../shared/messages.js";
-import type { Score } from "../shared/types.js";
+import type { Score, TuningOptions } from "../shared/types.js";
 import type { MutationBatch } from "../mapping/live.js";
 import { WseAudioEngine } from "../audio/engine.js";
 
@@ -36,10 +36,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
   if (msg.type === "WSE_OFFSCREEN_PLAY") {
     const score = msg.score as Score;
-    const tuning = msg.tuning as { brightness?: number; reverb?: number } | undefined;
+    const tuning = msg.tuning as TuningOptions | undefined;
     const driveMode = msg.driveMode as DriveMode | undefined;
     lastScore = score;
-    const opts = { brightness: tuning?.brightness, reverb: tuning?.reverb };
+    const opts = { brightness: tuning?.brightness, reverb: tuning?.reverb, mix: tuning?.mix };
     const playPromise =
       driveMode === "scroll"
         ? engine.startScrollMode(score, opts)

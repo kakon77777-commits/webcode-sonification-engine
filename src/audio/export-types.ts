@@ -1,4 +1,4 @@
-import type { Score } from "../shared/types.js";
+import type { LayerMixTuning, Score } from "../shared/types.js";
 
 export type { Score } from "../shared/types.js";
 
@@ -7,6 +7,7 @@ export type ExportFormat = "wav" | "midi";
 export interface ExportOptions {
   brightness?: number;
   reverb?: number;
+  mix?: Partial<LayerMixTuning>;
   sampleRate?: number;
 }
 

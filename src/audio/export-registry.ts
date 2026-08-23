@@ -11,6 +11,8 @@ export async function encodeScore(
 ): Promise<EncodedExport> {
   switch (format) {
     case "midi":
+      // MIDI stays score-derived only: audio-mix tuning affects WAV rendering,
+      // not note generation or MIDI bytes.
       return {
         format: "midi",
         extension: "mid",
