@@ -126,6 +126,24 @@ export type InstrumentName =
 /** Which structural family dominates the page — drives orchestration (§17). */
 export type PageCharacter = "content" | "navigation" | "media" | "form";
 
+export type MappingProfileVersion = 1;
+
+export interface MappingProfile {
+  version: MappingProfileVersion;
+  id: string;
+  label: string;
+  description: string;
+  characterBias: Record<PageCharacter, number>;
+}
+
+export interface MappingProfileInput {
+  version?: number;
+  id?: string;
+  label?: string;
+  description?: string;
+  characterBias?: Partial<Record<PageCharacter, number>>;
+}
+
 /** User-adjustable mapping tuning (popup sliders). Part of Θ, fully deterministic. */
 export interface TuningOptions {
   /** BPM offset, −30…+30. */

@@ -5,5 +5,12 @@ export { generateScore } from "./default-map.js";
 export { quantizePitch, quantizeTime, degreeToMidi, scalePitchClasses, clampMidi } from "./quantize.js";
 export { applyLimits, MAX_VOICES, MAX_EVENTS_PER_SECOND } from "./limits.js";
 export { chooseOrchestration, detectCharacter, euclid } from "./orchestration.js";
+export {
+  BUILTIN_MAPPING_PROFILES,
+  DEFAULT_MAPPING_PROFILE,
+  canonicalMappingProfile,
+  mappingProfileHash,
+  resolveMappingProfile,
+} from "./mapping-profile.js";
 export { arrangeMusically } from "./arrangement.js";
 export { mulberry32, mixSeed, fnv1a32, hash64hex } from "./deterministic-seed.js";
