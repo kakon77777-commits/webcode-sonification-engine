@@ -1,16 +1,38 @@
-import type { ModeName, Score, StyleName, TuningOptions } from "../src/shared/types.js";
-import { DEFAULT_TUNING } from "../src/shared/types.js";
-import { extractPageFeatures } from "../src/content/extract.js";
-import { computeFingerprint } from "../src/mapping/fingerprint.js";
-import { generateScore } from "../src/mapping/default-map.js";
-import { WseAudioEngine } from "../src/audio/engine.js";
 import { DEFAULT_LAYER_MIX, resolveLayerMix } from "../src/audio/layer-mix.js";
+import { WseAudioEngine } from "../src/audio/engine.js";
 import { downloadEncodedExport } from "../src/audio/export-download.js";
 import { encodeScore } from "../src/audio/export-registry.js";
 import type { ExportFormat, ExportOptions } from "../src/audio/export-types.js";
 import { scrollFraction } from "../src/audio/scroll-scheduler.js";
-import type { MutationBatch } from "../src/mapping/live.js";
+import { extractPageFeatures } from "../src/content/extract.js";
+import { generateScore } from "../src/mapping/default-map.js";
+import { computeFingerprint } from "../src/mapping/fingerprint.js";
 import { layerForTag } from "../src/mapping/layer-tags.js";
+import { DEFAULT_MAPPING_PROFILE, resolveMappingProfile } from "../src/mapping/mapping-profile.js";
+import type { MutationBatch } from "../src/mapping/live.js";
+import { DEFAULT_TUNING } from "../src/shared/types.js";
+import type {
+  MappingProfile,
+  MappingProfileInput,
+  ModeName,
+  PageCharacter,
+  Score,
+  StyleName,
+  TuningOptions,
+  WsePreset,
+} from "../src/shared/types.js";
+import { PRESET_STORAGE_KEY, readPresetEnvelope, removePreset, serializePresetEnvelope, upsertPreset } from "../src/ui/presets.js";
+import {
+  buildProfileChoices,
+  CUSTOM_PROFILE_VALUE,
+  findProfileChoice,
+  markCustomProfileValue,
+  presetIdFromLabel,
+  PROFILE_CHARACTER_ORDER,
+  profileBiasFromValues,
+  profileBiasToSliderValues,
+  trimPresetLabel,
+} from "../src/ui/profile-controls.js";
 import { LAYER_COLORS, LAYER_LABELS, mountViz, type VizHandles } from "../src/viz/viz-core.js";
 
 type DriveMode = "auto" | "scroll" | "live";
@@ -20,28 +42,68 @@ type DriveMode = "auto" | "scroll" | "live";
  * Exposes window.__wse for automated verification.
  */
 
+const DEFAULT_STYLE: StyleName = "ambient";
+const DEFAULT_MODE: ModeName = "hybrid";
+const CUSTOM_PROFILE_DESCRIPTION = "User-adjusted structural emphasis.";
+const SETTINGS_KEY = "wse-demo-settings-v1";
+
 const engine = new WseAudioEngine();
 let variation = 0;
 let lastScore: Score | null = null;
-const SETTINGS_KEY = "wse-demo-settings-v1";
+let presets: WsePreset[] = [];
 
 const $ = (id: string) => document.getElementById(id)!;
 const out = $("out");
+const mappingProfileSel = $("mapping-profile") as HTMLSelectElement;
+const presetNameInput = $("preset-name") as HTMLInputElement;
+const deletePresetBtn = $("delete-preset") as HTMLButtonElement;
+
+const profileSliders: Record<PageCharacter, HTMLInputElement> = {
+  content: $("p-content") as HTMLInputElement,
+  navigation: $("p-navigation") as HTMLInputElement,
+  media: $("p-media") as HTMLInputElement,
+  form: $("p-form") as HTMLInputElement,
+};
 
 function currentTuning(): TuningOptions {
-  const v = (id: string) => Number(($(id) as HTMLInputElement).value);
+  const value = (id: string) => Number(($(id) as HTMLInputElement).value);
   return {
-    tempoShift: v("s-tempo"),
-    density: v("s-density") / 100,
-    brightness: v("s-bright") / 100,
-    reverb: v("s-reverb") / 100,
+    tempoShift: value("s-tempo"),
+    density: value("s-density") / 100,
+    brightness: value("s-bright") / 100,
+    reverb: value("s-reverb") / 100,
     mix: resolveLayerMix({
-      lowEnd: v("s-low-end") / 100,
-      pad: v("s-pad") / 100,
-      melody: v("s-melody") / 100,
-      rhythm: v("s-rhythm") / 100,
+      lowEnd: value("s-low-end") / 100,
+      pad: value("s-pad") / 100,
+      melody: value("s-melody") / 100,
+      rhythm: value("s-rhythm") / 100,
     }),
   };
+}
+
+function currentProfileSliderValues(): Record<PageCharacter, number> {
+  return {
+    content: Number(profileSliders.content.value),
+    navigation: Number(profileSliders.navigation.value),
+    media: Number(profileSliders.media.value),
+    form: Number(profileSliders.form.value),
+  };
+}
+
+function currentMappingProfile(): MappingProfile {
+  const sliderValues = currentProfileSliderValues();
+  const selectedValue = markCustomProfileValue(mappingProfileSel.value, sliderValues, presets);
+  const selectedChoice = findProfileChoice(selectedValue, presets);
+  if (selectedChoice && selectedChoice.kind !== "custom") {
+    return resolveMappingProfile(selectedChoice.profile);
+  }
+
+  return resolveMappingProfile({
+    id: CUSTOM_PROFILE_VALUE,
+    label: "Custom",
+    description: CUSTOM_PROFILE_DESCRIPTION,
+    characterBias: profileBiasFromValues(sliderValues),
+  });
 }
 
 function currentRenderOptions(): ExportOptions {
@@ -54,12 +116,14 @@ function currentOptions(): {
   mode: ModeName;
   variation: number;
   tuning: TuningOptions;
+  mappingProfile: MappingProfile;
 } {
   return {
     style: ($("style") as HTMLSelectElement).value as StyleName,
     mode: ($("mode") as HTMLSelectElement).value as ModeName,
     variation,
     tuning: currentTuning(),
+    mappingProfile: currentMappingProfile(),
   };
 }
 
@@ -87,6 +151,14 @@ function applyTuning(tuning?: TuningOptions): void {
   renderSliderValues();
 }
 
+function applyProfileSliders(profile?: MappingProfileInput): void {
+  const values = profileBiasToSliderValues(profile);
+  for (const character of PROFILE_CHARACTER_ORDER) {
+    profileSliders[character].value = String(values[character]);
+  }
+  renderProfileSliderValues();
+}
+
 function renderSliderValues(): void {
   const tempo = Number(($("s-tempo") as HTMLInputElement).value);
   $("v-tempo").textContent = `${tempo >= 0 ? "+" : ""}${tempo}`;
@@ -99,23 +171,86 @@ function renderSliderValues(): void {
   $("v-rhythm").textContent = `${($("s-rhythm") as HTMLInputElement).value}%`;
 }
 
+function renderProfileSliderValues(): void {
+  for (const character of PROFILE_CHARACTER_ORDER) {
+    $(`v-p-${character}`).textContent = `${profileSliders[character].value}%`;
+  }
+}
+
+function setProfileSelection(value: string): void {
+  if ([...mappingProfileSel.options].some((option) => option.value === value)) {
+    mappingProfileSel.value = value;
+  } else {
+    mappingProfileSel.value = CUSTOM_PROFILE_VALUE;
+  }
+  deletePresetBtn.disabled = !mappingProfileSel.value.startsWith("preset:");
+}
+
+function populateProfileOptions(selectedValue: string): void {
+  const choices = buildProfileChoices(presets);
+  mappingProfileSel.textContent = "";
+  for (const choice of choices) {
+    const option = document.createElement("option");
+    option.value = choice.value;
+    option.textContent = choice.label;
+    mappingProfileSel.appendChild(option);
+  }
+  setProfileSelection(selectedValue);
+}
+
+function syncProfileSelection(preferredValue?: string): void {
+  const selectedValue = preferredValue ?? mappingProfileSel.value;
+  setProfileSelection(markCustomProfileValue(selectedValue, currentProfileSliderValues(), presets));
+}
+
+function applyBuiltinProfile(profile: MappingProfile): void {
+  applyProfileSliders(profile);
+  presetNameInput.value = "";
+  setProfileSelection(profile.id);
+}
+
+function applyPreset(preset: WsePreset): void {
+  ($("style") as HTMLSelectElement).value = preset.style;
+  ($("mode") as HTMLSelectElement).value = preset.mode;
+  applyTuning(preset.tuning);
+  applyProfileSliders(preset.mappingProfile);
+  presetNameInput.value = preset.label;
+  setProfileSelection(`preset:${preset.id}`);
+}
+
+function applyDefaults(): void {
+  ($("style") as HTMLSelectElement).value = DEFAULT_STYLE;
+  ($("mode") as HTMLSelectElement).value = DEFAULT_MODE;
+  applyTuning({
+    ...DEFAULT_TUNING,
+    mix: DEFAULT_LAYER_MIX,
+  });
+  applyBuiltinProfile(DEFAULT_MAPPING_PROFILE);
+}
+
+function persistPresets(): void {
+  window.localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(serializePresetEnvelope(presets)));
+}
+
 function saveSettings(): void {
   const settings = {
     style: ($("style") as HTMLSelectElement).value,
     mode: ($("mode") as HTMLSelectElement).value,
     playback: ($("playback") as HTMLSelectElement).value,
     tuning: currentTuning(),
+    mappingProfile: currentMappingProfile(),
+    mappingProfileSelection: mappingProfileSel.value,
   };
   window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }
 
 function loadSettings(): void {
+  presets = readPresetEnvelope(JSON.parse(window.localStorage.getItem(PRESET_STORAGE_KEY) ?? "null"));
+  populateProfileOptions(DEFAULT_MAPPING_PROFILE.id);
+
   const raw = window.localStorage.getItem(SETTINGS_KEY);
   if (!raw) {
-    applyTuning({
-      ...DEFAULT_TUNING,
-      mix: DEFAULT_LAYER_MIX,
-    });
+    applyDefaults();
     return;
   }
 
@@ -125,23 +260,21 @@ function loadSettings(): void {
       mode?: string;
       playback?: string;
       tuning?: TuningOptions;
+      mappingProfile?: MappingProfileInput;
+      mappingProfileSelection?: string;
     };
     if (saved.style) ($("style") as HTMLSelectElement).value = saved.style;
     if (saved.mode) ($("mode") as HTMLSelectElement).value = saved.mode;
     if (saved.playback) ($("playback") as HTMLSelectElement).value = saved.playback;
     applyTuning(saved.tuning);
+    applyProfileSliders(resolveMappingProfile(saved.mappingProfile));
+    syncProfileSelection(saved.mappingProfileSelection ?? DEFAULT_MAPPING_PROFILE.id);
   } catch {
-    applyTuning({
-      ...DEFAULT_TUNING,
-      mix: DEFAULT_LAYER_MIX,
-    });
+    applyDefaults();
   }
 }
 
 function analyze() {
-  // Keep the status line constant during extraction — otherwise the previous
-  // status text changes textLength and (correctly, but confusingly) shifts
-  // the page's own fingerprint between plays.
   out.textContent = "idle";
   const features = extractPageFeatures(document, window);
   const fingerprint = computeFingerprint(features);
@@ -173,7 +306,6 @@ function onDemoScroll(): void {
   engine.setScrollFraction(currentScrollFraction());
 }
 
-// ---- Live Mode (Mutation Mode): direct MutationObserver, same document, no messaging needed.
 let mutationObserver: MutationObserver | null = null;
 let liveFlushTimer = 0;
 let liveAdded: string[] = [];
@@ -219,11 +351,6 @@ function startLiveObserver(): void {
   mutationObserver = new MutationObserver((records) => {
     for (const record of records) {
       if (record.type === "childList") {
-        // Removed nodes are already detached by the time the record fires —
-        // their own ancestor chain is gone, so .closest() on the node itself
-        // can no longer see a data-wse-ignore ancestor. record.target (the
-        // still-attached container the removal happened in) is the only
-        // reliable thing to check for removals.
         const containerIgnored = ignoredForLive(record.target);
         for (const node of record.addedNodes) {
           if (node instanceof Element && !ignoredForLive(node)) pushLiveTag(liveAdded, node);
@@ -286,7 +413,7 @@ async function play() {
   if (driveMode === "scroll") {
     await engine.startScrollMode(score, { brightness: tuning.brightness, reverb: tuning.reverb, mix: tuning.mix });
     attachScrollListener();
-    engine.setScrollFraction(currentScrollFraction()); // sync to wherever the user already is
+    engine.setScrollFraction(currentScrollFraction());
   } else if (driveMode === "live") {
     await engine.startLiveMode(score, { brightness: tuning.brightness, reverb: tuning.reverb, mix: tuning.mix });
     $("liveLog").textContent = "";
@@ -303,8 +430,6 @@ async function play() {
     });
   }
 
-  // Watch the code become music: same viz core as the extension's visualizer tab.
-  // Live Mode has no fixed score.events being played, so it gets the liveFeed instead.
   if (driveMode !== "live") {
     $("viz").classList.add("on");
     renderVizLegend();
@@ -330,14 +455,30 @@ async function play() {
     modeSuffix;
 }
 
+function preferredSelectionAfterDelete(): string {
+  const currentBias = profileBiasFromValues(currentProfileSliderValues());
+  for (const choice of buildProfileChoices(presets)) {
+    if (choice.kind !== "builtin") {
+      continue;
+    }
+    const builtinBias = resolveMappingProfile(choice.profile).characterBias;
+    if (PROFILE_CHARACTER_ORDER.every((character) => builtinBias[character] === currentBias[character])) {
+      return choice.value;
+    }
+  }
+  return CUSTOM_PROFILE_VALUE;
+}
+
 $("play").addEventListener("click", () => {
   variation = 0;
   void play();
 });
+
 $("regen").addEventListener("click", () => {
   variation++;
   void play();
 });
+
 $("stop").addEventListener("click", () => {
   void engine.stop();
   detachScrollListener();
@@ -347,8 +488,64 @@ $("stop").addEventListener("click", () => {
   out.textContent = "stopped";
 });
 
-// Percussion buttons double as real DOM mutation triggers for Live Mode:
-// clicking one adds a genuine (invisible) <button>, clicking it again removes it.
+mappingProfileSel.addEventListener("change", () => {
+  const choice = findProfileChoice(mappingProfileSel.value, presets);
+  if (choice?.kind === "preset" && choice.preset) {
+    applyPreset(choice.preset);
+  } else if (choice?.kind === "builtin") {
+    applyBuiltinProfile(choice.profile);
+  }
+  saveSettings();
+});
+
+for (const slider of Object.values(profileSliders)) {
+  slider.addEventListener("input", () => {
+    renderProfileSliderValues();
+    syncProfileSelection();
+  });
+  slider.addEventListener("change", () => saveSettings());
+}
+
+($("save-preset") as HTMLButtonElement).addEventListener("click", () => {
+  const label = trimPresetLabel(presetNameInput.value);
+  presetNameInput.value = label;
+  if (!label) {
+    out.textContent = "Preset name required";
+    return;
+  }
+  const preset: WsePreset = {
+    version: 1,
+    id: presetIdFromLabel(label),
+    label,
+    mappingProfile: currentMappingProfile(),
+    style: ($("style") as HTMLSelectElement).value as StyleName,
+    mode: ($("mode") as HTMLSelectElement).value as ModeName,
+    tuning: currentTuning(),
+  };
+  presets = upsertPreset(presets, preset);
+  persistPresets();
+  populateProfileOptions(`preset:${preset.id}`);
+  saveSettings();
+  out.textContent = `preset saved · ${preset.label}`;
+});
+
+deletePresetBtn.addEventListener("click", () => {
+  const choice = findProfileChoice(mappingProfileSel.value, presets);
+  if (!choice?.preset) {
+    out.textContent = "select a saved preset";
+    return;
+  }
+  presets = removePreset(presets, choice.preset.id);
+  persistPresets();
+  populateProfileOptions(preferredSelectionAfterDelete());
+  saveSettings();
+  out.textContent = `preset deleted · ${choice.preset.label}`;
+});
+
+presetNameInput.addEventListener("change", () => {
+  presetNameInput.value = trimPresetLabel(presetNameInput.value);
+});
+
 document.querySelectorAll<HTMLButtonElement>(".mutate-btn").forEach((btn, i) => {
   btn.addEventListener("click", () => {
     const slots = $("mutateSlots");
@@ -365,6 +562,7 @@ document.querySelectorAll<HTMLButtonElement>(".mutate-btn").forEach((btn, i) => 
     slots.appendChild(el);
   });
 });
+
 $("export").addEventListener("click", async () => {
   if (!lastScore) return;
   const btn = $("export") as HTMLButtonElement;
@@ -395,7 +593,12 @@ for (const id of ["s-tempo", "s-density", "s-bright", "s-reverb", "s-low-end", "
   });
 }
 
+($("tune-reset") as HTMLButtonElement).addEventListener("click", () => {
+  applyDefaults();
+  saveSettings();
+  out.textContent = "defaults restored";
+});
+
 loadSettings();
 
-// Expose analysis (without audio) immediately for tests/automation.
 (window as any).__wseAnalyze = analyze;

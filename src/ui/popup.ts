@@ -1,12 +1,35 @@
-import type { ModeName, PageFeatures, Score, StyleName, TuningOptions } from "../shared/types.js";
-import { DEFAULT_TUNING } from "../shared/types.js";
-import type { DriveMode, PlaybackState, WseErrorCode } from "../shared/messages.js";
-import { computeFingerprint } from "../mapping/fingerprint.js";
-import { generateScore } from "../mapping/default-map.js";
 import { DEFAULT_LAYER_MIX, resolveLayerMix } from "../audio/layer-mix.js";
 import { downloadEncodedExport } from "../audio/export-download.js";
 import { encodeScore } from "../audio/export-registry.js";
 import type { ExportFormat, ExportOptions } from "../audio/export-types.js";
+import { generateScore } from "../mapping/default-map.js";
+import { computeFingerprint } from "../mapping/fingerprint.js";
+import { DEFAULT_MAPPING_PROFILE, resolveMappingProfile } from "../mapping/mapping-profile.js";
+import type { DriveMode, PlaybackState, WseErrorCode } from "../shared/messages.js";
+import { DEFAULT_TUNING } from "../shared/types.js";
+import type {
+  MappingProfile,
+  MappingProfileInput,
+  ModeName,
+  PageCharacter,
+  PageFeatures,
+  Score,
+  StyleName,
+  TuningOptions,
+  WsePreset,
+} from "../shared/types.js";
+import { PRESET_STORAGE_KEY, readPresetEnvelope, removePreset, serializePresetEnvelope, upsertPreset } from "./presets.js";
+import {
+  buildProfileChoices,
+  CUSTOM_PROFILE_VALUE,
+  findProfileChoice,
+  markCustomProfileValue,
+  presetIdFromLabel,
+  PROFILE_CHARACTER_ORDER,
+  profileBiasFromValues,
+  profileBiasToSliderValues,
+  trimPresetLabel,
+} from "./profile-controls.js";
 
 /**
  * Popup: Analyze & Play / Stop / Regenerate (§49).
@@ -15,6 +38,10 @@ import type { ExportFormat, ExportOptions } from "../audio/export-types.js";
  */
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+
+const DEFAULT_STYLE: StyleName = "ambient";
+const DEFAULT_MODE: ModeName = "hybrid";
+const CUSTOM_PROFILE_DESCRIPTION = "User-adjusted structural emphasis.";
 
 const analyzeBtn = $<HTMLButtonElement>("analyze");
 const visualizeBtn = $<HTMLButtonElement>("visualize");
@@ -27,6 +54,10 @@ const exportBox = $<HTMLDetailsElement>("export-box");
 const modeSel = $<HTMLSelectElement>("mode");
 const styleSel = $<HTMLSelectElement>("style");
 const playbackSel = $<HTMLSelectElement>("playback");
+const mappingProfileSel = $<HTMLSelectElement>("mapping-profile");
+const presetNameInput = $<HTMLInputElement>("preset-name");
+const savePresetBtn = $<HTMLButtonElement>("save-preset");
+const deletePresetBtn = $<HTMLButtonElement>("delete-preset");
 const infoBox = $<HTMLDivElement>("info");
 const explainBox = $<HTMLDetailsElement>("explain-box");
 const explainList = $<HTMLUListElement>("explain");
@@ -37,8 +68,8 @@ let lastFeatures: PageFeatures | null = null;
 let lastScore: Score | null = null;
 let lastTabId: number | null = null;
 let variation = 0;
+let presets: WsePreset[] = [];
 
-/** Tuning sliders — part of Θ, persisted, fully deterministic. */
 const sliders = {
   tempo: $<HTMLInputElement>("s-tempo"),
   density: $<HTMLInputElement>("s-density"),
@@ -48,6 +79,13 @@ const sliders = {
   pad: $<HTMLInputElement>("s-pad"),
   melody: $<HTMLInputElement>("s-melody"),
   rhythm: $<HTMLInputElement>("s-rhythm"),
+};
+
+const profileSliders: Record<PageCharacter, HTMLInputElement> = {
+  content: $<HTMLInputElement>("p-content"),
+  navigation: $<HTMLInputElement>("p-navigation"),
+  media: $<HTMLInputElement>("p-media"),
+  form: $<HTMLInputElement>("p-form"),
 };
 
 function currentTuning(): TuningOptions {
@@ -63,6 +101,31 @@ function currentTuning(): TuningOptions {
       rhythm: Number(sliders.rhythm.value) / 100,
     }),
   };
+}
+
+function currentProfileSliderValues(): Record<PageCharacter, number> {
+  return {
+    content: Number(profileSliders.content.value),
+    navigation: Number(profileSliders.navigation.value),
+    media: Number(profileSliders.media.value),
+    form: Number(profileSliders.form.value),
+  };
+}
+
+function currentMappingProfile(): MappingProfile {
+  const sliderValues = currentProfileSliderValues();
+  const selectedValue = markCustomProfileValue(mappingProfileSel.value, sliderValues, presets);
+  const selectedChoice = findProfileChoice(selectedValue, presets);
+  if (selectedChoice && selectedChoice.kind !== "custom") {
+    return resolveMappingProfile(selectedChoice.profile);
+  }
+
+  return resolveMappingProfile({
+    id: CUSTOM_PROFILE_VALUE,
+    label: "Custom",
+    description: CUSTOM_PROFILE_DESCRIPTION,
+    characterBias: profileBiasFromValues(sliderValues),
+  });
 }
 
 function currentRenderOptions(): ExportOptions {
@@ -81,8 +144,8 @@ function resolvedTuning(tuning?: TuningOptions): TuningOptions {
 }
 
 function renderSliderValues(): void {
-  const t = Number(sliders.tempo.value);
-  $<HTMLSpanElement>("v-tempo").textContent = `${t >= 0 ? "+" : ""}${t}`;
+  const tempo = Number(sliders.tempo.value);
+  $<HTMLSpanElement>("v-tempo").textContent = `${tempo >= 0 ? "+" : ""}${tempo}`;
   $<HTMLSpanElement>("v-density").textContent = `${sliders.density.value}%`;
   $<HTMLSpanElement>("v-bright").textContent = sliders.bright.value;
   $<HTMLSpanElement>("v-reverb").textContent = sliders.reverb.value;
@@ -90,6 +153,86 @@ function renderSliderValues(): void {
   $<HTMLSpanElement>("v-pad").textContent = `${sliders.pad.value}%`;
   $<HTMLSpanElement>("v-melody").textContent = `${sliders.melody.value}%`;
   $<HTMLSpanElement>("v-rhythm").textContent = `${sliders.rhythm.value}%`;
+}
+
+function renderProfileSliderValues(): void {
+  for (const character of PROFILE_CHARACTER_ORDER) {
+    $<HTMLSpanElement>(`v-p-${character}`).textContent = `${profileSliders[character].value}%`;
+  }
+}
+
+function setProfileSelection(value: string): void {
+  if ([...mappingProfileSel.options].some((option) => option.value === value)) {
+    mappingProfileSel.value = value;
+  } else {
+    mappingProfileSel.value = CUSTOM_PROFILE_VALUE;
+  }
+  deletePresetBtn.disabled = !mappingProfileSel.value.startsWith("preset:");
+}
+
+function populateProfileOptions(selectedValue: string): void {
+  const choices = buildProfileChoices(presets);
+  mappingProfileSel.textContent = "";
+  for (const choice of choices) {
+    const option = document.createElement("option");
+    option.value = choice.value;
+    option.textContent = choice.label;
+    mappingProfileSel.appendChild(option);
+  }
+  setProfileSelection(selectedValue);
+}
+
+function syncProfileSelection(preferredValue?: string): void {
+  const selectedValue = preferredValue ?? mappingProfileSel.value;
+  const syncedValue = markCustomProfileValue(selectedValue, currentProfileSliderValues(), presets);
+  setProfileSelection(syncedValue);
+}
+
+function applyTuning(tuning?: TuningOptions): void {
+  const resolved = resolvedTuning(tuning);
+  const mix = resolveLayerMix(resolved.mix);
+  sliders.tempo.value = String(resolved.tempoShift);
+  sliders.density.value = String(Math.round(resolved.density * 100));
+  sliders.bright.value = String(Math.round(resolved.brightness * 100));
+  sliders.reverb.value = String(Math.round(resolved.reverb * 100));
+  sliders.lowEnd.value = String(Math.round(mix.lowEnd * 100));
+  sliders.pad.value = String(Math.round(mix.pad * 100));
+  sliders.melody.value = String(Math.round(mix.melody * 100));
+  sliders.rhythm.value = String(Math.round(mix.rhythm * 100));
+  renderSliderValues();
+}
+
+function applyProfileSliders(profile?: MappingProfileInput): void {
+  const values = profileBiasToSliderValues(profile);
+  for (const character of PROFILE_CHARACTER_ORDER) {
+    profileSliders[character].value = String(values[character]);
+  }
+  renderProfileSliderValues();
+}
+
+function applyBuiltinProfile(profile: MappingProfile): void {
+  applyProfileSliders(profile);
+  presetNameInput.value = "";
+  setProfileSelection(profile.id);
+}
+
+function applyPreset(preset: WsePreset): void {
+  styleSel.value = preset.style;
+  modeSel.value = preset.mode;
+  applyTuning(preset.tuning);
+  applyProfileSliders(preset.mappingProfile);
+  presetNameInput.value = preset.label;
+  setProfileSelection(`preset:${preset.id}`);
+}
+
+function applyDefaults(): void {
+  styleSel.value = DEFAULT_STYLE;
+  modeSel.value = DEFAULT_MODE;
+  applyTuning({
+    ...DEFAULT_TUNING,
+    mix: DEFAULT_LAYER_MIX,
+  });
+  applyBuiltinProfile(DEFAULT_MAPPING_PROFILE);
 }
 
 const ERROR_TEXT: Record<WseErrorCode, string> = {
@@ -179,6 +322,7 @@ function buildScore(features: PageFeatures): Score {
     mode: modeSel.value as ModeName,
     variation,
     tuning: currentTuning(),
+    mappingProfile: currentMappingProfile(),
   });
 }
 
@@ -192,7 +336,6 @@ const STATUS_PREFIX: Record<DriveMode, string> = {
   live: "Live — watching the page",
 };
 
-/** Detach any content-script tracker that might be listening on `tabId` (idempotent, safe if none is). */
 function detachTrackers(tabId: number): void {
   chrome.tabs.sendMessage(tabId, { type: "WSE_SCROLL_STOP" }).catch(() => {});
   chrome.tabs.sendMessage(tabId, { type: "WSE_MUTATION_STOP" }).catch(() => {});
@@ -247,7 +390,6 @@ async function analyzeAndPlay(): Promise<void> {
   }
 }
 
-/** Analyze, then watch the code become music in a full visualizer tab. */
 async function analyzeAndVisualize(): Promise<void> {
   clearError();
   visualizeBtn.disabled = true;
@@ -258,7 +400,6 @@ async function analyzeAndVisualize(): Promise<void> {
     lastFeatures = features;
     const score = buildScore(features);
     lastScore = score;
-    // One audio source at a time: the visualizer tab plays, offscreen stops.
     await chrome.runtime.sendMessage({ type: "WSE_STOP" });
     if (lastTabId !== null) detachTrackers(lastTabId);
     await chrome.storage.local.set({
@@ -298,7 +439,6 @@ async function regenerate(): Promise<void> {
   await playScore(score);
 }
 
-/** Encode the current score and trigger a local browser download (§52 Export). */
 async function exportCurrentScore(): Promise<void> {
   if (!lastScore) return;
   clearError();
@@ -318,50 +458,144 @@ async function exportCurrentScore(): Promise<void> {
   }
 }
 
+async function savePresetList(): Promise<void> {
+  await chrome.storage.local.set({
+    [PRESET_STORAGE_KEY]: serializePresetEnvelope(presets),
+  });
+}
+
 async function saveSettings(): Promise<void> {
   await chrome.storage.local.set({
     style: styleSel.value,
     mode: modeSel.value,
     playback: playbackSel.value,
     tuning: currentTuning(),
+    mappingProfile: currentMappingProfile(),
+    mappingProfileSelection: mappingProfileSel.value,
   });
 }
 
-function applyTuning(t: TuningOptions): void {
-  const resolved = resolvedTuning(t);
-  const mix = resolveLayerMix(resolved.mix);
-  sliders.tempo.value = String(resolved.tempoShift);
-  sliders.density.value = String(Math.round(resolved.density * 100));
-  sliders.bright.value = String(Math.round(resolved.brightness * 100));
-  sliders.reverb.value = String(Math.round(resolved.reverb * 100));
-  sliders.lowEnd.value = String(Math.round(mix.lowEnd * 100));
-  sliders.pad.value = String(Math.round(mix.pad * 100));
-  sliders.melody.value = String(Math.round(mix.melody * 100));
-  sliders.rhythm.value = String(Math.round(mix.rhythm * 100));
-  renderSliderValues();
+async function handleProfileSelectionChange(): Promise<void> {
+  const choice = findProfileChoice(mappingProfileSel.value, presets);
+  if (!choice) {
+    setProfileSelection(CUSTOM_PROFILE_VALUE);
+    await saveSettings();
+    return;
+  }
+
+  if (choice.kind === "preset" && choice.preset) {
+    applyPreset(choice.preset);
+  } else if (choice.kind === "builtin") {
+    applyBuiltinProfile(choice.profile);
+  }
+
+  await saveSettings();
+}
+
+async function handleProfileSliderChange(): Promise<void> {
+  renderProfileSliderValues();
+  syncProfileSelection();
+  await saveSettings();
+}
+
+async function handleSavePreset(): Promise<void> {
+  const label = trimPresetLabel(presetNameInput.value);
+  presetNameInput.value = label;
+  if (!label) {
+    setStatus("Preset name required.");
+    return;
+  }
+
+  const preset: WsePreset = {
+    version: 1,
+    id: presetIdFromLabel(label),
+    label,
+    mappingProfile: currentMappingProfile(),
+    style: styleSel.value as StyleName,
+    mode: modeSel.value as ModeName,
+    tuning: currentTuning(),
+  };
+
+  presets = upsertPreset(presets, preset);
+  populateProfileOptions(`preset:${preset.id}`);
+  presetNameInput.value = preset.label;
+  await savePresetList();
+  await saveSettings();
+  setStatus(`Preset saved · ${preset.label}`);
+}
+
+function preferredSelectionAfterDelete(): string {
+  const currentBias = profileBiasFromValues(currentProfileSliderValues());
+  for (const choice of buildProfileChoices(presets)) {
+    if (choice.kind === "preset" || choice.kind === "custom") {
+      continue;
+    }
+    const builtinBias = resolveMappingProfile(choice.profile).characterBias;
+    if (PROFILE_CHARACTER_ORDER.every((character) => builtinBias[character] === currentBias[character])) {
+      return choice.value;
+    }
+  }
+  return CUSTOM_PROFILE_VALUE;
+}
+
+async function handleDeletePreset(): Promise<void> {
+  const choice = findProfileChoice(mappingProfileSel.value, presets);
+  if (!choice?.preset) {
+    setStatus("Select a saved preset to delete.");
+    return;
+  }
+
+  presets = removePreset(presets, choice.preset.id);
+  populateProfileOptions(preferredSelectionAfterDelete());
+  deletePresetBtn.disabled = true;
+  await savePresetList();
+  await saveSettings();
+  setStatus(`Preset deleted · ${choice.preset.label}`);
+}
+
+async function resetControls(): Promise<void> {
+  applyDefaults();
+  await saveSettings();
+  setStatus("Defaults restored.");
 }
 
 async function init(): Promise<void> {
-  const saved = (await chrome.storage.local.get(["style", "mode", "playback", "tuning"])) as {
+  const saved = (await chrome.storage.local.get([
+    "style",
+    "mode",
+    "playback",
+    "tuning",
+    "mappingProfile",
+    "mappingProfileSelection",
+    PRESET_STORAGE_KEY,
+  ])) as {
     style?: string;
     mode?: string;
     playback?: string;
     tuning?: TuningOptions;
+    mappingProfile?: MappingProfileInput;
+    mappingProfileSelection?: string;
+    [PRESET_STORAGE_KEY]?: unknown;
   };
+
+  presets = readPresetEnvelope(saved[PRESET_STORAGE_KEY]);
+  populateProfileOptions(saved.mappingProfileSelection ?? DEFAULT_MAPPING_PROFILE.id);
+
   if (saved.style) styleSel.value = saved.style;
   if (saved.mode) modeSel.value = saved.mode;
   if (saved.playback) playbackSel.value = saved.playback;
-  applyTuning(resolvedTuning(saved.tuning));
+  applyTuning(saved.tuning);
+  applyProfileSliders(resolveMappingProfile(saved.mappingProfile));
+  syncProfileSelection(saved.mappingProfileSelection ?? DEFAULT_MAPPING_PROFILE.id);
 
-  // Reflect ongoing playback if the popup was reopened.
   try {
     const res = (await chrome.runtime.sendMessage({ type: "WSE_GET_STATE" })) as
       | { ok: boolean; state?: PlaybackState }
       | undefined;
     if (res?.state?.playing && res.state.summary) {
       stopBtn.disabled = false;
-      const s = res.state.summary;
-      setStatus(`Playing · ${s.style} · ${s.keyName} · ${s.bpm} BPM`);
+      const summary = res.state.summary;
+      setStatus(`Playing · ${summary.style} · ${summary.keyName} · ${summary.bpm} BPM`);
     }
   } catch {
     // Service worker asleep — idle state.
@@ -373,19 +607,29 @@ visualizeBtn.addEventListener("click", () => void analyzeAndVisualize());
 stopBtn.addEventListener("click", () => void stop());
 regenBtn.addEventListener("click", () => void regenerate());
 exportBtn.addEventListener("click", () => void exportCurrentScore());
+savePresetBtn.addEventListener("click", () => void handleSavePreset());
+deletePresetBtn.addEventListener("click", () => void handleDeletePreset());
 styleSel.addEventListener("change", () => void saveSettings());
 modeSel.addEventListener("change", () => void saveSettings());
 playbackSel.addEventListener("change", () => void saveSettings());
+mappingProfileSel.addEventListener("change", () => void handleProfileSelectionChange());
+presetNameInput.addEventListener("change", () => {
+  presetNameInput.value = trimPresetLabel(presetNameInput.value);
+});
+
 for (const el of Object.values(sliders)) {
   el.addEventListener("input", () => renderSliderValues());
   el.addEventListener("change", () => void saveSettings());
 }
-$<HTMLButtonElement>("tune-reset").addEventListener("click", () => {
-  applyTuning({
-    ...DEFAULT_TUNING,
-    mix: DEFAULT_LAYER_MIX,
+
+for (const slider of Object.values(profileSliders)) {
+  slider.addEventListener("input", () => {
+    renderProfileSliderValues();
+    syncProfileSelection();
   });
-  void saveSettings();
-});
+  slider.addEventListener("change", () => void handleProfileSliderChange());
+}
+
+$<HTMLButtonElement>("tune-reset").addEventListener("click", () => void resetControls());
 
 void init();

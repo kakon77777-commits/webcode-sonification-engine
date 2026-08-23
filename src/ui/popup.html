@@ -46,6 +46,44 @@
         <span class="value">Structural</span>
       </div>
 
+      <details id="profile-box" open>
+        <summary>Mapping profile</summary>
+        <div class="profile-controls">
+          <div class="row">
+            <label for="mapping-profile">Profile</label>
+            <select id="mapping-profile"></select>
+          </div>
+          <div class="slider-row">
+            <label for="p-content">Content</label>
+            <input id="p-content" type="range" min="75" max="125" value="100" />
+            <span class="value" id="v-p-content">100%</span>
+          </div>
+          <div class="slider-row">
+            <label for="p-navigation">Navigation</label>
+            <input id="p-navigation" type="range" min="75" max="125" value="100" />
+            <span class="value" id="v-p-navigation">100%</span>
+          </div>
+          <div class="slider-row">
+            <label for="p-media">Media</label>
+            <input id="p-media" type="range" min="75" max="125" value="100" />
+            <span class="value" id="v-p-media">100%</span>
+          </div>
+          <div class="slider-row">
+            <label for="p-form">Form</label>
+            <input id="p-form" type="range" min="75" max="125" value="100" />
+            <span class="value" id="v-p-form">100%</span>
+          </div>
+          <div class="row preset-row">
+            <label for="preset-name">Preset</label>
+            <input id="preset-name" type="text" maxlength="48" placeholder="Name this setup" />
+          </div>
+          <div class="controls profile-actions">
+            <button id="save-preset">Save preset</button>
+            <button id="delete-preset">Delete preset</button>
+          </div>
+        </div>
+      </details>
+
       <details id="tune-box" open>
         <summary>Customize</summary>
         <div class="sliders">
