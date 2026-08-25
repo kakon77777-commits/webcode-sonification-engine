@@ -152,17 +152,17 @@ The compare workflow may compare derived features, profiles, scores, or exports,
 
 Exit gate: users can understand, reproduce, tune, and export a page's sound without losing the fact that the page generated it.
 
-### Phase 4 — WSE/FARHP sister-project connection
+### Phase 4 — WSE/Axioglyph sister-project connection
 
 Deliverables:
 
 - add a visible sister-project link in the WSE homepage footer and Demo footer;
-- add a reciprocal WSE link to the public FARHP WebLab entry when FARHP's actual HTTPS URL is verified;
-- use public WebLab landing pages, not staff dashboards or authenticated research endpoints;
-- keep the copy accurate: WSE and FARHP are related sound/research projects, not one combined engine;
+- add a reciprocal WSE link to the verified public Axioglyph landing page at `https://axioglyph.evemisslab.com/`;
+- use the public Axioglyph landing page, not a FARHP WebLab staff dashboard or authenticated research endpoint;
+- keep the copy accurate: WSE and Axioglyph are related sound/research projects, not one combined engine;
 - sync and verify the deployed WSE bundle after the link is added.
 
-The FARHP public URL is an external prerequisite. The implementation must verify the final URL and route before writing it into the site; the repository's example domain is not an acceptable deployment target.
+The FARHP WebLab remains a future connection because it is not yet built. The Axioglyph URL above is the current release's verified public target; the implementation must verify the final route before writing it into the site.
 
 Exit gate: both projects can discover each other through public links, and neither project gains a runtime or data dependency on the other.
 
@@ -174,7 +174,7 @@ Deliverables:
 - publish a release note that separates implemented features from future format evaluations;
 - verify core bundle → website demo synchronization;
 - run the full validation matrix and perform a manual listening review;
-- preserve a continuation card describing the exact release head, open risks, and the FARHP URL used for the sibling link.
+- preserve a continuation card describing the exact release head, open risks, and the Axioglyph URL used for the sibling link.
 
 ## 5. Verification strategy
 
@@ -207,7 +207,7 @@ The existing unit suite and typecheck remain mandatory gates. New checks must co
 - no console errors or failed asset loads;
 - privacy behavior remains local-only;
 - the deployed Demo contains the same pipeline as the reviewed core bundle;
-- WSE/FARHP links resolve to the verified public routes and do not expose authenticated surfaces.
+- WSE/Axioglyph links resolve to the verified public routes and do not expose authenticated surfaces.
 
 ## 6. Non-goals
 
@@ -218,7 +218,7 @@ This design does not authorize:
 - merging FARHP's phase engine into WSE during this release;
 - silently changing the fingerprint formula or existing privacy boundary;
 - broad unrelated UI redesign;
-- deploying a FARHP link before its public destination is verified.
+- deploying a sibling link before its public destination is verified.
 
 ## 7. Acceptance criteria
 
@@ -230,5 +230,4 @@ The first WSE evolution is accepted when:
 4. WAV remains reliable and MIDI is available as the first new export.
 5. Representative voices and complete scores pass objective render checks and manual listening review.
 6. Existing privacy, reproducibility, and guardrail tests remain green.
-7. WSE and FARHP have accurate public sibling links without runtime coupling.
-
+7. WSE and Axioglyph have accurate public sibling links without runtime coupling; FARHP WebLab remains out of scope until it has a verified public landing page.

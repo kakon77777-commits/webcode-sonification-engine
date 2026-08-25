@@ -1,21 +1,21 @@
 # Chrome Web Store 上架指南 — WSE
 
-v0.3.0 已經送審通過、上架。這份指南現在涵蓋兩種情境：**(A) 更新既有上架項目到 v0.4.0**（你現在要做的），以及下面保留的 **(B) 全新建立項目**流程（供未來參考，例如換帳號或重新提交）。
+v0.3.0 已經送審通過、上架。這份指南目前的工作目標是：**(A) 更新既有上架項目到 v0.5.0**；下面保留的 **(B) 全新建立項目**流程只供未來換帳號或重新提交時參考。
 
-所有可直接複製的文字都在 `listing-en.md` / `listing-zh.md`；圖片在 `store/assets/`；上傳包會由 build 產生，檔名帶版本號（例如 `wse-v0.4.0-store.zip`，需重新壓縮 `dist/`）。
+所有可直接複製的文字都在 `listing-en.md` / `listing-zh.md`；圖片在 `store/assets/`；上傳包會由 build 產生，檔名帶版本號（例如 `wse-v0.5.0-store.zip`，需重新壓縮 `dist/`）。
 
 ---
 
-## A. 更新到 v0.4.0（既有項目）
+## A. 更新到 v0.5.0（既有項目）
 
-v0.4.0 新增 Scroll Mode、Live Mode、WAV 匯出——**權限完全沒變**（還是 activeTab/scripting/storage/offscreen），所以審核風險跟第一次一樣低，通常會走加速通道。
+v0.5.0 新增 Mapping Profiles、local Presets、每層混音控制與 MIDI 匯出，並保留 v0.4.x 的 Scroll Mode、Live Mode 與 WAV 匯出。**權限完全沒變**（還是 activeTab/scripting/storage/offscreen）；這是既有項目的版本更新，不是建立新項目。
 
 1. 確認 `dist/` 是最新的：`npm run build`
-2. 打包：把 `dist/` 內容壓成 zip（例如 `store/wse-v0.4.0-store.zip`）
+2. 打包：把 `dist/` 內容壓成 zip（例如 `store/wse-v0.5.0-store.zip`）
 3. 開 https://chrome.google.com/webstore/devconsole
 4. 點進既有的 WebCode Sonification Engine 項目
-5. 左側 **Package** 分頁 → 上傳新 zip（manifest 內 version 已是 0.4.0，Chrome 會自動辨識版本遞增）
-6. （選配但建議）**Store listing** 分頁 → Description 換成更新後的 `listing-en.md`（已加入 Scroll/Live/WAV 段落），中文版同步換 `listing-zh.md`
+5. 左側 **Package** 分頁 → 上傳新 zip（manifest 內 version 已是 0.5.0，Chrome 會自動辨識版本遞增）
+6. （選配但建議）**Store listing** 分頁 → Description 換成更新後的 `listing-en.md`（已加入 Profiles/Presets/MIDI 段落），中文版同步換 `listing-zh.md`
 7. Privacy 分頁：**不需要改**，因為權限沒變，逐字答案跟下面 §B.3 完全一樣，Chrome 通常不會重新要求填寫
 8. **Submit for review**
 
@@ -63,7 +63,7 @@ v0.4.0 新增 Scroll Mode、Live Mode、WAV 匯出——**權限完全沒變**�
 
 **Single purpose description:**
 
-> Converts the structure of the webpage in the current tab (DOM statistics, sampled computed styles, layout geometry) into locally synthesized generative music. Playback can optionally be driven by the page's scroll position or by its live DOM mutations instead of a fixed clock, and the result can be visualized or exported as a WAV file. All processing is local; nothing is transmitted.
+> Converts the structure of the webpage in the current tab (DOM statistics, sampled computed styles, layout geometry) into locally synthesized generative music. Playback can optionally be driven by the page's scroll position or by its live DOM mutations instead of a fixed clock, and the result can be visualized or exported as a WAV or MIDI file. Mapping Profiles and Presets are bounded local configuration; all processing is local and nothing is transmitted.
 
 **Permission justifications:**
 

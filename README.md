@@ -7,7 +7,7 @@
 
 網頁代碼音樂化引擎——讀取目前網頁的 DOM、HTML、CSS 與可存取結構特徵，透過可重現的生成規則把它轉成音樂。
 
-- **Status:** v0.4.1 developer preview (Chrome, Manifest V3)
+- **Status:** v0.5.0 release candidate (Chrome, Manifest V3)
 - **Website:** https://wse.evemisstechnology.com/ (live in-browser demo included)
 - **Repository:** https://github.com/kakon77777-commits/webcode-sonification-engine
 - **License:** Apache-2.0
@@ -55,7 +55,7 @@ Ambient · Piano · Electronic · Orchestral · **Eastern 東方** — each chan
 
 All sounds are synthesized (oscillators + filters + envelopes + procedural reverb); there are no sample libraries. Alongside pads, strings, pianos, bells, plucks and the electronic kit: breath-modeled **蕭 (xiao)**, **笛 (flute)** and **clarinet** (odd-harmonic reed tone), Karplus-Strong **guitar** and **箏/koto** (brighter, shorter-ringing), **太鼓 (taiko)**, **marimba** (inharmonic wooden partials), **subbass** (clean electronic low end) and **choir** (formant-filtered vocal pad).
 
-### Sound design (v0.4.1)
+### Sound design (v0.4.1 baseline)
 
 Every sustained/melodic voice has a **filter envelope** — brightness that moves through the note (a bow-attack sweep on strings, felt-damping darkening on piano, a synth-lead "zap") instead of a static, lifeless cutoff. The master bus adds a gentle warmth/air EQ and a soft-knee saturator (exact identity below the threshold, only the loudest peaks get rounded off) before compression — a light mastering pass, not a different synthesis engine. The procedural reverb impulse response has a pre-delay, sparse early reflections, and a tail that progressively darkens (air absorption), replacing flat decaying noise.
 
@@ -199,6 +199,7 @@ WSE deliberately claims a narrower, different thing:
 
 ## Changelog
 
+- **v0.5.0** — Mapping Profiles and bounded local Presets; per-layer mix controls including conservative Low End; deterministic MIDI export alongside the existing WAV path; reciprocal public Axioglyph sibling links; synchronized product-site/demo release metadata. FLAC/Opus/MP3 remain future evaluations, and the WSE/Axioglyph relationship is navigation-only.
 - **v0.4.1** — Sound quality pass: filter envelopes on every sustained voice (pad, lowpad, strings, piano, pluck, lead, epiano), a redesigned procedural reverb (pre-delay + early reflections + darkening tail instead of flat noise), and a master-bus warmth/air EQ + soft-knee saturator ahead of the compressor. Five new instruments — clarinet, marimba, 箏/koto, subbass, choir — wired into the orchestration palette (23 instruments total). 124 tests, plus a browser-run `/quality.html` voice harness that verifies all 23 instruments render with real energy, zero clipping, and zero non-finite samples.
 - **v0.4.0** — Scroll Mode (§45, viewport as playhead, with rewind-safe scrubbing) and Mutation Mode (§29–31, live DOM performance with an ambient bed + rate-limited reactive layer), both browser-verified with a live-DOM-mutation self-feedback bug found and fixed along the way; WAV export (offline render through the exact live-playback synthesis graph); deterministic-audio fix (reverb impulse response and percussion/breath noise were previously `Math.random()` — now seeded from the score's fingerprint, so replaying or re-exporting the same score reproduces the same "room"); 72 tests
 - **v0.3.0** — Visualizer: full-tab "watch the code become music" view (token stream + karaoke-style highlights + scrolling piano roll), note provenance layers, `data-wse-ignore` extraction opt-out, 41 tests

@@ -29,14 +29,16 @@ A text-heavy blog leads with keys and strings. A button-covered dashboard turns 
 👁️ VISUALIZER — WATCH THE CODE BECOME MUSIC
 Press "Analyze & Visualize" and a full tab opens where the page's tags stream by like subtitles and light up the instant "their" note sounds — links flash on arpeggios, images on bells, buttons on percussion — while a piano-roll score scrolls under the playhead. Honest provenance: every note knows which structural layer created it.
 
-🖱️ SCROLL = PLAYHEAD, or 🔴 LIVE = DOM CHANGES (new in v0.4)
+🖱️ SCROLL = PLAYHEAD, or 🔴 LIVE = DOM CHANGES (v0.4+)
 Two more ways to play a page. In Scroll mode, your scroll position becomes the timeline — scroll down to play forward, scroll back to go silent, scroll forward again to replay, like scrubbing a video. In Live mode, the page's own runtime activity performs: a quiet ambient bed loops underneath while elements being added, removed, or changed on the page add notes on top — a quiet page just stays quiet, a busy one becomes a real performance.
 
-⬇️ EXPORT WAV (new in v0.4)
+⬇️ EXPORT WAV + MIDI (v0.5)
 Render the current piece offline — through the exact graph you just heard — and download a standard 16-bit WAV file. Entirely on-device.
 
+MIDI exports the same deterministic score with stable WSE layer tracks, so the page-generated arrangement remains inspectable and editable. WAV uses the current layer mix; MIDI preserves the score and is unaffected by mix-only changes.
+
 🎛️ MAKE IT YOURS
-Five styles (Ambient, Piano, Electronic, Orchestral, Eastern), three modes (Hybrid, Musical, Analytical), and tuning sliders for tempo, density, brightness and reverb. 18 synthesized instruments including xiao, flute, Karplus-Strong guitar and taiko — no sample downloads, everything is pure Web Audio synthesis.
+Five styles (Ambient, Piano, Electronic, Orchestral, Eastern), three modes (Hybrid, Musical, Analytical), bounded Mapping Profiles, local Presets, and tuning sliders for tempo, density, brightness, reverb and layer mix including Low End. 23 synthesized instruments including xiao, flute, clarinet, koto, marimba, subbass and choir — no sample downloads, everything is pure Web Audio synthesis.
 
 💡 EXPLAIN MODE
 "Why does this page sound like this?" — the popup shows exactly which page features drove the tempo, key, scale and layers.
